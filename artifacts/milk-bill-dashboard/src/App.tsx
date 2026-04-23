@@ -1,5 +1,5 @@
 import { Layout } from "@/components/layout";
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,10 +8,7 @@ import LoginPage from "@/pages/auth/login";
 import NotFound from "@/pages/not-found";
 
 import Dashboard from "@/pages/dashboard";
-import BillsList from "@/pages/bills/index";
-import NewBill from "@/pages/bills/new";
 import FetchBill from "@/pages/bills/fetch";
-import BillDetail from "@/pages/bills/detail";
 import BankAdvice from "@/pages/bank-advice";
 import Reports from "@/pages/reports";
 import Purchases from "@/pages/central-input/purchases";
@@ -33,10 +30,10 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/" component={Dashboard} />
-        <Route path="/bills" component={BillsList} />
-        <Route path="/bills/new" component={NewBill} />
         <Route path="/bills/fetch" component={FetchBill} />
-        <Route path="/bills/:id" component={BillDetail} />
+        <Route path="/bills">
+          <Redirect to="/bills/fetch" />
+        </Route>
         <Route path="/bank-advice" component={BankAdvice} />
         <Route path="/reports" component={Reports} />
         <Route path="/central-input/purchases" component={Purchases} />
