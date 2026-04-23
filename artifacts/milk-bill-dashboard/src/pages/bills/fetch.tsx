@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -364,7 +364,7 @@ export default function FetchBill() {
                       const dayQty = dayEntries.reduce((s, e) => s + e.quantity, 0);
                       const dayAmt = dayEntries.reduce((s, e) => s + e.amount, 0);
                       return (
-                        <>
+                        <React.Fragment key={date}>
                           {dayEntries.map((entry, idx) => (
                             <TableRow key={`${date}-${entry.shift}`} className="hover:bg-muted/20">
                               {idx === 0 && (
@@ -399,7 +399,7 @@ export default function FetchBill() {
                             <TableCell className="text-right text-sm tabular-nums">{dayQty.toFixed(3)} L</TableCell>
                             <TableCell className="text-right text-sm tabular-nums">{formatCurrency(dayAmt)}</TableCell>
                           </TableRow>
-                        </>
+                        </React.Fragment>
                       );
                     })}
                     {bill.entries.length === 0 && (
