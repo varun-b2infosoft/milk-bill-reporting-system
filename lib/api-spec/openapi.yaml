@@ -3,20 +3,40 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Milk Bill Reporting System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: bills
+    description: Milk bill operations
+  - name: milk-entries
+    description: Milk entry operations
+  - name: societies
+    description: Society operations
+  - name: routes
+    description: Route operations
+  - name: bank-advice
+    description: Bank advice operations
+  - name: reports
+    description: Report operations
+  - name: purchases
+    description: Purchase operations
+  - name: targets
+    description: Target operations
+  - name: dcs
+    description: DCS Monitoring
+  - name: dashboard
+    description: Dashboard summary operations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +44,395 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/recent-bills:
+    get:
+      operationId: getRecentBills
+      tags: [dashboard]
+      summary: Get recent bills for dashboard
+      responses:
+        "200":
+          description: Recent bills list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BillSummaryItem"
+
+  /bills:
+    get:
+      operationId: listBills
+      tags: [bills]
+      summary: List all milk bills
+      parameters:
+        - name: societyId
+          in: query
+          schema:
+            type: integer
+        - name: routeCode
+          in: query
+          schema:
+            type: string
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of bills
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillListResponse"
+
+    post:
+      operationId: createBill
+      tags: [bills]
+      summary: Create a new milk bill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBillBody"
+      responses:
+        "201":
+          description: Created bill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bill"
+
+  /bills/{id}:
+    get:
+      operationId: getBill
+      tags: [bills]
+      summary: Get a single milk bill by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Bill detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillDetail"
+        "404":
+          description: Not found
+
+    put:
+      operationId: updateBill
+      tags: [bills]
+      summary: Update a milk bill
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBillBody"
+      responses:
+        "200":
+          description: Updated bill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bill"
+
+    delete:
+      operationId: deleteBill
+      tags: [bills]
+      summary: Delete a milk bill
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /bills/{id}/entries:
+    get:
+      operationId: getBillEntries
+      tags: [milk-entries]
+      summary: Get milk entries for a bill
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of milk entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MilkEntry"
+
+  /bills/{id}/deductions:
+    get:
+      operationId: getBillDeductions
+      tags: [bills]
+      summary: Get deductions for a bill
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of deductions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Deduction"
+
+  /societies:
+    get:
+      operationId: listSocieties
+      tags: [societies]
+      summary: List all societies
+      responses:
+        "200":
+          description: List of societies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Society"
+
+    post:
+      operationId: createSociety
+      tags: [societies]
+      summary: Create a society
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSocietyBody"
+      responses:
+        "201":
+          description: Created society
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Society"
+
+  /routes:
+    get:
+      operationId: listRoutes
+      tags: [routes]
+      summary: List all routes
+      responses:
+        "200":
+          description: List of routes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Route"
+
+  /bank-advice:
+    get:
+      operationId: listBankAdvice
+      tags: [bank-advice]
+      summary: List all bank advice records
+      parameters:
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: List of bank advice records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BankAdvice"
+
+  /reports/monthly-summary:
+    get:
+      operationId: getMonthlySummary
+      tags: [reports]
+      summary: Get monthly bill summary
+      parameters:
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: month
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Monthly summary
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MonthlySummaryItem"
+
+  /reports/yearly-summary:
+    get:
+      operationId: getYearlySummary
+      tags: [reports]
+      summary: Get yearly summary
+      parameters:
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Yearly summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/YearlySummary"
+
+  /purchases:
+    get:
+      operationId: listPurchases
+      tags: [purchases]
+      summary: List all purchases
+      responses:
+        "200":
+          description: List of purchases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Purchase"
+
+    post:
+      operationId: createPurchase
+      tags: [purchases]
+      summary: Create a purchase record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePurchaseBody"
+      responses:
+        "201":
+          description: Created purchase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Purchase"
+
+  /targets:
+    get:
+      operationId: listTargets
+      tags: [targets]
+      summary: List all targets
+      responses:
+        "200":
+          description: List of targets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Target"
+
+    post:
+      operationId: createTarget
+      tags: [targets]
+      summary: Create a target
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTargetBody"
+      responses:
+        "201":
+          description: Created target
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Target"
+
+  /dcs:
+    get:
+      operationId: listDcsMonitoring
+      tags: [dcs]
+      summary: List DCS monitoring records
+      responses:
+        "200":
+          description: List of DCS records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DcsRecord"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +440,550 @@ components:
       properties:
         status:
           type: string
+      required: [status]
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalBillsThisMonth:
+          type: integer
+        totalMilkQuantity:
+          type: number
+        totalAmount:
+          type: number
+        totalSocieties:
+          type: integer
+        totalRoutes:
+          type: integer
+        pendingBills:
+          type: integer
+        avgFatPercent:
+          type: number
+        avgSnfPercent:
+          type: number
       required:
+        - totalBillsThisMonth
+        - totalMilkQuantity
+        - totalAmount
+        - totalSocieties
+        - totalRoutes
+        - pendingBills
+        - avgFatPercent
+        - avgSnfPercent
+
+    BillSummaryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        billNumber:
+          type: string
+        billDate:
+          type: string
+          format: date
+        societyName:
+          type: string
+        societyCode:
+          type: string
+        totalQuantity:
+          type: number
+        totalAmount:
+          type: number
+        finalPayable:
+          type: number
+        status:
+          type: string
+          enum: [draft, issued, paid]
+      required:
+        - id
+        - billNumber
+        - billDate
+        - societyName
+        - societyCode
+        - totalQuantity
+        - totalAmount
+        - finalPayable
         - status
 
+    BillListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillSummaryItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [data, total, page, limit]
+
+    Bill:
+      type: object
+      properties:
+        id:
+          type: integer
+        billNumber:
+          type: string
+        billDate:
+          type: string
+          format: date
+        fromDate:
+          type: string
+          format: date
+        toDate:
+          type: string
+          format: date
+        societyId:
+          type: integer
+        societyName:
+          type: string
+        societyCode:
+          type: string
+        routeCode:
+          type: string
+        shift:
+          type: string
+          enum: [morning, evening, both]
+        bankName:
+          type: string
+        bankAccount:
+          type: string
+        bankIfsc:
+          type: string
+        rateFormula:
+          type: string
+        totalQuantity:
+          type: number
+        totalAmount:
+          type: number
+        totalDeductions:
+          type: number
+        leadLoadAmount:
+          type: number
+        finalPayable:
+          type: number
+        status:
+          type: string
+          enum: [draft, issued, paid]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - billNumber
+        - billDate
+        - fromDate
+        - toDate
+        - societyId
+        - societyName
+        - societyCode
+        - routeCode
+        - shift
+        - totalQuantity
+        - totalAmount
+        - totalDeductions
+        - leadLoadAmount
+        - finalPayable
+        - status
+        - createdAt
+
+    BillDetail:
+      allOf:
+        - $ref: "#/components/schemas/Bill"
+        - type: object
+          properties:
+            entries:
+              type: array
+              items:
+                $ref: "#/components/schemas/MilkEntry"
+            deductions:
+              type: array
+              items:
+                $ref: "#/components/schemas/Deduction"
+            priceDifference:
+              type: number
+          required: [entries, deductions]
+
+    CreateBillBody:
+      type: object
+      properties:
+        billNumber:
+          type: string
+        billDate:
+          type: string
+          format: date
+        fromDate:
+          type: string
+          format: date
+        toDate:
+          type: string
+          format: date
+        societyId:
+          type: integer
+        routeCode:
+          type: string
+        shift:
+          type: string
+          enum: [morning, evening, both]
+        bankName:
+          type: string
+        bankAccount:
+          type: string
+        bankIfsc:
+          type: string
+        rateFormula:
+          type: string
+        leadLoadAmount:
+          type: number
+        status:
+          type: string
+          enum: [draft, issued, paid]
+      required:
+        - billNumber
+        - billDate
+        - fromDate
+        - toDate
+        - societyId
+        - routeCode
+        - shift
+
+    MilkEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        billId:
+          type: integer
+        entryDate:
+          type: string
+          format: date
+        shift:
+          type: string
+          enum: [morning, evening]
+        quantity:
+          type: number
+        fatPercent:
+          type: number
+        snfPercent:
+          type: number
+        rate:
+          type: number
+        amount:
+          type: number
+      required:
+        - id
+        - billId
+        - entryDate
+        - shift
+        - quantity
+        - fatPercent
+        - snfPercent
+        - rate
+        - amount
+
+    Deduction:
+      type: object
+      properties:
+        id:
+          type: integer
+        billId:
+          type: integer
+        category:
+          type: string
+          enum: [financial, dcs_training, share_account, test_chem, cattle_feed, other]
+        label:
+          type: string
+        amount:
+          type: number
+      required: [id, billId, category, label, amount]
+
+    Society:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        code:
+          type: string
+        routeCode:
+          type: string
+        bankName:
+          type: string
+        bankAccount:
+          type: string
+        bankIfsc:
+          type: string
+        contactPerson:
+          type: string
+        phone:
+          type: string
+      required: [id, name, code, routeCode]
+
+    CreateSocietyBody:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        routeCode:
+          type: string
+        bankName:
+          type: string
+        bankAccount:
+          type: string
+        bankIfsc:
+          type: string
+        contactPerson:
+          type: string
+        phone:
+          type: string
+      required: [name, code, routeCode]
+
+    Route:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+      required: [id, code, name]
+
+    BankAdvice:
+      type: object
+      properties:
+        id:
+          type: integer
+        billId:
+          type: integer
+        billNumber:
+          type: string
+        societyName:
+          type: string
+        bankName:
+          type: string
+        bankAccount:
+          type: string
+        bankIfsc:
+          type: string
+        amount:
+          type: number
+        adviceDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [pending, processed, failed]
+      required:
+        - id
+        - billId
+        - billNumber
+        - societyName
+        - amount
+        - adviceDate
+        - status
+
+    MonthlySummaryItem:
+      type: object
+      properties:
+        month:
+          type: integer
+        year:
+          type: integer
+        totalBills:
+          type: integer
+        totalQuantity:
+          type: number
+        totalAmount:
+          type: number
+        totalDeductions:
+          type: number
+        totalPayable:
+          type: number
+        avgFat:
+          type: number
+        avgSnf:
+          type: number
+      required:
+        - month
+        - year
+        - totalBills
+        - totalQuantity
+        - totalAmount
+        - totalDeductions
+        - totalPayable
+        - avgFat
+        - avgSnf
+
+    YearlySummary:
+      type: object
+      properties:
+        year:
+          type: integer
+        totalBills:
+          type: integer
+        totalQuantity:
+          type: number
+        totalAmount:
+          type: number
+        totalPayable:
+          type: number
+        monthlyBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlySummaryItem"
+      required:
+        - year
+        - totalBills
+        - totalQuantity
+        - totalAmount
+        - totalPayable
+        - monthlyBreakdown
+
+    Purchase:
+      type: object
+      properties:
+        id:
+          type: integer
+        societyId:
+          type: integer
+        societyName:
+          type: string
+        purchaseDate:
+          type: string
+          format: date
+        quantity:
+          type: number
+        fatPercent:
+          type: number
+        snfPercent:
+          type: number
+        rate:
+          type: number
+        amount:
+          type: number
+        shift:
+          type: string
+          enum: [morning, evening]
+      required:
+        - id
+        - societyId
+        - societyName
+        - purchaseDate
+        - quantity
+        - fatPercent
+        - snfPercent
+        - rate
+        - amount
+        - shift
+
+    CreatePurchaseBody:
+      type: object
+      properties:
+        societyId:
+          type: integer
+        purchaseDate:
+          type: string
+          format: date
+        quantity:
+          type: number
+        fatPercent:
+          type: number
+        snfPercent:
+          type: number
+        rate:
+          type: number
+        shift:
+          type: string
+          enum: [morning, evening]
+      required:
+        - societyId
+        - purchaseDate
+        - quantity
+        - fatPercent
+        - snfPercent
+        - rate
+        - shift
+
+    Target:
+      type: object
+      properties:
+        id:
+          type: integer
+        societyId:
+          type: integer
+        societyName:
+          type: string
+        period:
+          type: string
+        targetQuantity:
+          type: number
+        achievedQuantity:
+          type: number
+        targetAmount:
+          type: number
+        achievedAmount:
+          type: number
+        percentAchieved:
+          type: number
+      required:
+        - id
+        - societyId
+        - societyName
+        - period
+        - targetQuantity
+        - achievedQuantity
+        - targetAmount
+        - achievedAmount
+        - percentAchieved
+
+    CreateTargetBody:
+      type: object
+      properties:
+        societyId:
+          type: integer
+        period:
+          type: string
+        targetQuantity:
+          type: number
+        targetAmount:
+          type: number
+      required: [societyId, period, targetQuantity, targetAmount]
+
+    DcsRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        societyId:
+          type: integer
+        societyName:
+          type: string
+        testDate:
+          type: string
+          format: date
+        fatReading:
+          type: number
+        snfReading:
+          type: number
+        status:
+          type: string
+          enum: [pass, fail, pending]
+        remarks:
+          type: string
+      required:
+        - id
+        - societyId
+        - societyName
+        - testDate
+        - fatReading
+        - snfReading
+        - status

@@ -1,0 +1,167 @@
+🧠 Core Direction
+Clean, minimal, professional UI
+Slightly “government-grade” (trustworthy, structured) but modern SaaS feel
+No flashy UI, no gradients, no clutter
+🎨 DESIGN SYSTEM
+
+Use this exact design system:
+
+Primary Colors
+
+Deep Blue: #0B5FA5
+Hover Blue: #084A82
+
+Background
+
+Main BG: #F5F7FA
+Card BG: #FFFFFF
+Borders: #E2E8F0
+
+Accent
+
+Green: #4CAF50
+Light Green BG: #E8F5E9
+
+Text
+
+Primary: #1F2937
+Secondary: #6B7280
+Muted: #9CA3AF
+
+Status
+
+Error: #E53935
+Warning: #F59E0B
+🧩 LAYOUT STRUCTURE
+Sidebar
+Background: Blue (#0B5FA5)
+White text
+Active item: highlight or left border
+No icons overload, keep it simple
+Top Navbar
+White background
+Bottom border (#E2E8F0)
+Minimal controls (search, profile)
+Cards
+White background
+Border radius: 8px
+Soft shadow (very light)
+Buttons
+Primary: Blue + white text
+Secondary: Light grey
+Success: Green (limited use)
+🧭 MODULE STRUCTURE
+1. Milk Bill
+Bills
+Bank Advice
+Reports
+2. Central Input
+Purchases
+Billing
+Performance
+Targets
+DCS Monitoring
+🧾 MILK BILL SCREEN (IMPORTANT – DO THIS RIGHT)
+1. Bill Summary (Top Card – Sticky)
+
+Show:
+
+Bill Date
+Bill Number
+Date Range
+Society Name + Code
+Route Code
+Shift
+Bank Details (collapsible)
+Rate Formula (expandable)
+2. Milk Entries (Main Table / List)
+
+Columns:
+
+Date
+Shift
+Quantity
+Fat %
+SNF %
+Rate
+Amount
+
+UX:
+
+Group by Date OR show daily totals
+Scrollable table
+Clean spacing
+
+REMOVE:
+
+“Quality = SWEET” if always same
+3. Totals Summary (Stats Cards)
+Total Milk Quantity
+Total Amount
+
+Optional:
+
+Type breakdown (only if needed)
+4. Performance Section
+Price Difference (highlight this)
+5. Deductions (Expandable Section)
+
+Group items:
+
+Financial Deductions
+DCS Training Fund
+Share Account
+Test Chem Fund
+Cattle Feed
+
+Show:
+
+Total Deduction (big number)
+Expand for details
+6. Final Settlement (Sticky Footer)
+
+Show:
+
+Milk Cost
+Lead Load Amount
+Total Deduction
+Final Payable Amount (highlight heavily)
+🧠 UX RULES (IMPORTANT)
+Avoid clutter like PDFs
+Don’t dump everything in “Reports”
+Separate:
+Transactions
+Performance
+Targets
+No unnecessary info:
+❌ Signature sections
+❌ “Zero Rupees Only”
+❌ Repeated labels
+❌ Full bank details always visible
+⚙️ FUNCTIONAL FEATURES
+Create / Edit Milk Bills
+View detailed bill
+Generate PDF (clean version)
+Bank Advice export
+Filtering by:
+Date range
+Society
+Route
+Reports:
+Milk Bill Report
+Monthly / Yearly summaries
+🧱 TECH STACK (let Replit choose if needed, but prefer)
+Frontend: React + Tailwind CSS
+Backend: Node.js / Express (or simple API mock if needed)
+Data: JSON or lightweight DB
+🎯 OUTPUT EXPECTATION
+Fully working dashboard UI
+Sidebar navigation
+At least 1 complete Milk Bill screen implemented
+Clean reusable components
+Professional spacing & typography
+⚠️ FINAL INSTRUCTION
+
+Do NOT overdesign.
+Do NOT add unnecessary animations.
+Focus on clarity, readability, and real-world usability.
