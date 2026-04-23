@@ -2,7 +2,6 @@ import React from "react";
 import { Link, useLocation } from "wouter";
 import { 
   LayoutDashboard, 
-  FileText, 
   Landmark, 
   BarChart3, 
   ShoppingCart, 
@@ -29,7 +28,6 @@ import { useAuth } from "@/context/AuthContext";
 const milkBillLinks = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/bills/fetch", label: "Fetch Bill", icon: Search },
-  { href: "/bills", label: "Bills", icon: FileText },
   { href: "/bank-advice", label: "Bank Advice", icon: Landmark },
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
@@ -44,17 +42,14 @@ const centralInputLinks = [
 /**
  * Find the active sidebar href for the current location.
  * Prefers exact matches, then the longest prefix match (href + "/").
- * This prevents "/bills" from activating when on "/bills/fetch".
  */
 function findActiveHref(
   links: { href: string }[],
   location: string,
 ): string | null {
-  // Exact match wins immediately
   const exact = links.find((l) => l.href === location);
   if (exact) return exact.href;
 
-  // Longest prefix match (the href must be followed by "/" in location)
   let best: { href: string } | null = null;
   for (const link of links) {
     if (link.href === "/") continue;
