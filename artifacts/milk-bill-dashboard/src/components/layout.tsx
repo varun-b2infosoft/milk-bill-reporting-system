@@ -5,7 +5,6 @@ import {
   Landmark, 
   BarChart3, 
   ShoppingCart, 
-  Receipt, 
   TrendingUp, 
   Target, 
   Activity,
@@ -23,6 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/context/AuthContext";
 
 const milkBillLinks = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -40,6 +40,7 @@ const centralInputLinks = [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { phone, logout } = useAuth();
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
@@ -103,12 +104,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         <div className="p-4 border-t border-sidebar-border/50">
           <div className="flex items-center gap-3 px-3 py-2 text-sm text-sidebar-foreground">
-            <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center flex-shrink-0">
               <User className="w-4 h-4 text-white" />
             </div>
-            <div className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-              <p className="font-medium text-white truncate">Admin User</p>
+            <div className="flex-1 overflow-hidden">
+              <p className="font-medium text-white truncate">{phone ? `+91 ${phone}` : "Admin User"}</p>
             </div>
+            <button
+              onClick={logout}
+              className="text-sidebar-foreground/70 hover:text-white transition-colors"
+              title="Log out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>
@@ -138,14 +146,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">Admin User</p>
+                    <p className="text-sm font-medium leading-none">Admin</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      admin@milkbill.coop
+                      {phone ? `+91 ${phone}` : ""}
                     </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={logout} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>

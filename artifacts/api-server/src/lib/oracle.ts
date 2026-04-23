@@ -46,6 +46,7 @@ export async function initOraclePool(): Promise<void> {
     logger.info("Oracle connection pool created");
 
     await discoverTables();
+    await ensureUsersTable();
     initialized = true;
   } catch (err) {
     logger.error({ err }, "Failed to initialize Oracle connection pool");
@@ -81,6 +82,41 @@ async function discoverTables(): Promise<void> {
         );
       }
     }
+  } finally {
+    await conn.close();
+  }
+}
+
+/**
+ * Creates the APP_USERS table if it does not yet exist.
+ * Safe to call on every startup — uses Oracle's exception-based IF NOT EXISTS pattern.
+ * Logs the SQL so admins can run it manually if needed.
+ */
+async function ensureUsersTable(): Promise<void> {
+  const conn = await pool!.getConnection();
+  try {
+    await conn.execute(`
+      BEGIN
+        EXECUTE IMMEDIATE '
+          CREATE TABLE APP_USERS (
+            ID           NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+            PHONE        VARCHAR2(10)  NOT NULL,
+            PASSWORD_HASH VARCHAR2(255) NOT NULL,
+            IS_ACTIVE    NUMBER(1)     DEFAULT 1 NOT NULL,
+            CREATED_AT   TIMESTAMP     DEFAULT SYSDATE NOT NULL,
+            CONSTRAINT APP_USERS_PHONE_UQ UNIQUE (PHONE)
+          )
+        ';
+      EXCEPTION
+        WHEN OTHERS THEN
+          IF SQLCODE = -955 THEN NULL; /* Table already exists */
+          ELSE RAISE;
+          END IF;
+      END;
+    `);
+    logger.info("APP_USERS table ready");
+  } catch (err) {
+    logger.warn({ err }, "Could not ensure APP_USERS table — create it manually");
   } finally {
     await conn.close();
   }

@@ -11,7 +11,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
+- **Database**: Oracle DB 19c (`192.168.1.30:1521/ORCLPDB1`, user `JD2`) via `oracledb` — private LAN only
+- **Auth**: Phone + Password + 6-digit OTP (2-step), JWT tokens via `jsonwebtoken`, passwords via `bcryptjs`
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
@@ -54,11 +55,19 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - `/central-input/targets` — Target setting with progress bar column
 - `/central-input/dcs-monitoring` — Quality test monitoring with pass/fail badges
 
-### DB Schema (Drizzle)
-Tables: `societies`, `routes`, `bills`, `milk_entries`, `deductions`, `purchases`, `targets`, `dcs_records`
+### DB Schema (Oracle — raw SQL, no ORM)
+Business tables: `BILLS`, `SOCIETIES`, `ROUTES`, `MILK_ENTRIES`, `DEDUCTIONS`, `PURCHASES`, `TARGETS`, `DCS_RECORDS` (discovered dynamically via `USER_TABLES` in `oracle.ts`)
+Auth table: `APP_USERS` (auto-created on startup) — columns: ID, PHONE, PASSWORD_HASH, IS_ACTIVE, CREATED_AT
+
+**Adding users:** Run `artifacts/api-server/scripts/setup-auth.sql` in SQL Developer / SQL*Plus.
+Generate bcrypt hash: `node -e "require('bcryptjs').hash('YourPwd',12).then(h=>console.log(h))"`
 
 ### API Routes
 All routes prefixed with `/api`:
+- `POST /api/auth/login` — validate phone+password, generate OTP (logged to console), return success
+- `POST /api/auth/verify-otp` — verify 6-digit OTP, return JWT token (8h expiry)
+- `POST /api/auth/resend-otp` — regenerate and log a fresh OTP
+- `GET /api/auth/me` — (protected) returns phone+userId from JWT
 - `GET /api/healthz`
 - `GET /api/dashboard/summary`, `GET /api/dashboard/recent-bills`
 - `GET/POST /api/bills`, `GET/PUT/DELETE /api/bills/:id`
