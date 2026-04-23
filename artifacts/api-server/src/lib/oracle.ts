@@ -9,20 +9,12 @@ const ORACLE_CONFIG = {
 
 // Known table name patterns for each entity (checked in order)
 const TABLE_PATTERNS: Record<string, string[]> = {
-  bills:       ["BILLS", "MILK_BILL", "MILK_BILLS", "BILL_MASTER", "MB_BILLS"],
-  societies:   ["SOCIETIES", "SOCIETY", "SOCIETY_MASTER", "MB_SOCIETIES"],
-  routes:      ["ROUTES", "ROUTE", "ROUTE_MASTER", "MB_ROUTES"],
-  milkEntries: ["MILK_ENTRIES", "MILK_ENTRY", "MILK_DATA", "ENTRY_DETAIL", "MB_ENTRIES"],
-  deductions:  ["DEDUCTIONS", "DEDUCTION", "BILL_DEDUCTIONS", "MB_DEDUCTIONS"],
-  purchases:   ["PURCHASES", "PURCHASE", "MILK_PURCHASES", "MB_PURCHASES"],
-  targets:     ["TARGETS", "TARGET", "SOCIETY_TARGETS", "MB_TARGETS"],
-  dcsRecords:  ["DCS_RECORDS", "DCS_MONITORING", "DCS", "DCS_DATA", "MB_DCS"],
 };
 
 // Resolved table names (populated on startup via discoverTables())
 export const T: Record<string, string> = {};
 
-let pool: oracledb.Pool | null = null;
+let pool: any = null;
 let initialized = false;
 
 export async function initOraclePool(): Promise<void> {
@@ -58,14 +50,14 @@ async function discoverTables(): Promise<void> {
   const conn = await pool!.getConnection();
   try {
     // Query all tables in the current user's schema
-    const result = await conn.execute<{ TABLE_NAME: string }>(
+    const result = await conn.execute(
       `SELECT TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME`,
       [],
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
+    ) as { rows?: Array<{ TABLE_NAME: string }> };
 
     const existingTables = new Set(
-      (result.rows ?? []).map((r) => r.TABLE_NAME.toUpperCase())
+      (result.rows ?? []).map((r: { TABLE_NAME: string }) => r.TABLE_NAME.toUpperCase())
     );
     logger.info({ tables: [...existingTables] }, "Oracle tables discovered");
 
@@ -127,7 +119,7 @@ export function isConnected(): boolean {
   return initialized && pool !== null;
 }
 
-export async function getConnection(): Promise<oracledb.Connection> {
+export async function getConnection(): Promise<any> {
   if (!pool) {
     throw new Error(
       "Oracle DB is not connected. Ensure the server at 192.168.1.30:1521 is reachable from this environment."
@@ -140,14 +132,14 @@ export async function getConnection(): Promise<oracledb.Connection> {
 export async function query<T = Record<string, unknown>>(
   sql: string,
   binds: unknown[] | Record<string, unknown> = [],
-  opts: oracledb.ExecuteOptions = {}
+  opts: Record<string, unknown> = {}
 ): Promise<T[]> {
   const conn = await getConnection();
   try {
-    const result = await conn.execute<T>(sql, binds, {
+    const result = await conn.execute(sql, binds, {
       outFormat: oracledb.OUT_FORMAT_OBJECT,
       ...opts,
-    });
+    }) as { rows?: T[] };
     return (result.rows ?? []) as T[];
   } catch (err) {
     logger.error({ err, sql }, "Oracle query failed");
@@ -161,8 +153,8 @@ export async function query<T = Record<string, unknown>>(
 export async function execute(
   sql: string,
   binds: unknown[] | Record<string, unknown> = [],
-  opts: oracledb.ExecuteOptions = {}
-): Promise<oracledb.Result<unknown>> {
+  opts: Record<string, unknown> = {}
+): Promise<any> {
   const conn = await getConnection();
   try {
     const result = await conn.execute(sql, binds, {

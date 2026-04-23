@@ -1,12 +1,8 @@
-import { Router } from "express";
-import oracledb from "oracledb";
-import { query, queryOne, execute, T } from "../lib/oracle";
+import { type Response, Router } from "express";
+import { query, queryOne } from "../lib/oracle";
+import { getMilkBill } from "../services/getMilkBill";
 import {
-  CreateBillBody,
-  UpdateBillBody,
   GetBillParams,
-  UpdateBillParams,
-  DeleteBillParams,
   GetBillEntriesParams,
   GetBillDeductionsParams,
   ListBillsQueryParams,
@@ -14,67 +10,128 @@ import {
 
 const router = Router();
 
+type BillContextRow = {
+  BILLID: number;
+  BILLDATE: unknown;
+  BILLNO: string | null;
+  BILLFROMDATE: unknown;
+  BILLTILLDATE: unknown;
+  DCSCODE: string;
+  DCSNAME: string;
+  DCSDISPLAYCODE: string;
+  BANKNAME: string | null;
+  ACCOUNTNO: string | null;
+};
+
+function formatDateStr(d: unknown): string {
+  if (!d) return "";
+  if (d instanceof Date) return d.toISOString().split("T")[0];
+  return String(d).split("T")[0];
+}
+
+function notSupported(res: Response, message: string) {
+  return res.status(501).json({ error: message });
+}
+
+async function getBillContextById(billId: number): Promise<BillContextRow | null> {
+  return queryOne<BillContextRow>(
+    `SELECT
+       B.BILLID,
+       B.BILLDATE,
+       B.BILLNO,
+       B.BILLFROMDATE,
+       B.BILLTILLDATE,
+       D.DCSCODE,
+       D.DCSNAME,
+       D.DCSDISPLAYCODE,
+       F.BANKNAME,
+       T.ACCOUNTNO
+     FROM FA_DCSBILL_T B
+     INNER JOIN PI_DCS_M D ON D.DCSCODE = B.DCSCODE
+     LEFT JOIN PI_DCSBANK_T T
+       ON T.DCSCODE = D.DCSCODE
+      AND T.BANKUSAGEID = 'Z011'
+     LEFT JOIN FA_BANK_M F ON F.BANKID = T.BANKID
+     WHERE B.BILLID = :billId`,
+    { billId }
+  );
+}
+
 // GET /bills
 router.get("/bills", async (req, res) => {
   try {
     const parsed = ListBillsQueryParams.safeParse(req.query);
-    const params = parsed.success ? parsed.data : {};
+    const params = parsed.success ? parsed.data : ({} as Partial<Record<"page" | "limit" | "societyId" | "routeCode" | "fromDate" | "toDate", unknown>>);
 
-    const page = params.page ?? 1;
-    const limit = params.limit ?? 20;
+    const page = typeof params.page === "number" ? params.page : 1;
+    const limit = typeof params.limit === "number" ? params.limit : 20;
     const offset = (page - 1) * limit;
 
     const conditions: string[] = [];
     const binds: Record<string, unknown> = { limit, offset };
+    const filterBinds: Record<string, unknown> = {};
 
-    if (params.societyId) {
-      conditions.push("SOCIETY_ID = :societyId");
+    if (params.societyId != null) {
+      conditions.push("B.DCSCODE = :societyId");
       binds.societyId = params.societyId;
+      filterBinds.societyId = params.societyId;
     }
     if (params.routeCode) {
-      conditions.push("ROUTE_CODE = :routeCode");
+      conditions.push("1 = 0");
       binds.routeCode = params.routeCode;
+      filterBinds.routeCode = params.routeCode;
     }
     if (params.fromDate) {
-      conditions.push("BILL_DATE >= TO_DATE(:fromDate, 'YYYY-MM-DD')");
+      conditions.push("B.BILLDATE >= TO_DATE(:fromDate, 'YYYY-MM-DD')");
       binds.fromDate = params.fromDate;
+      filterBinds.fromDate = params.fromDate;
     }
     if (params.toDate) {
-      conditions.push("BILL_DATE <= TO_DATE(:toDate, 'YYYY-MM-DD')");
+      conditions.push("B.BILLDATE <= TO_DATE(:toDate, 'YYYY-MM-DD')");
       binds.toDate = params.toDate;
+      filterBinds.toDate = params.toDate;
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-    let bills: any[] = [];
-    let totalRows: any = { CNT: 0 };
-
-    try {
-      [bills, totalRows] = await Promise.all([
-        query<{
-          ID: number; BILL_NUMBER: string; BILL_DATE: unknown;
-          SOCIETY_NAME: string; SOCIETY_CODE: string;
-          TOTAL_QUANTITY: number; TOTAL_AMOUNT: number;
-          FINAL_PAYABLE: number; STATUS: string;
-        }>(
-          `SELECT ID, BILL_NUMBER, BILL_DATE, SOCIETY_NAME, SOCIETY_CODE,
-                  TOTAL_QUANTITY, TOTAL_AMOUNT, FINAL_PAYABLE, STATUS
-             FROM ${T.bills}
-            ${where}
-            ORDER BY BILL_DATE DESC
-            OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`,
-          binds
-        ),
-        queryOne<{ CNT: number }>(
-          `SELECT COUNT(*) AS CNT FROM ${T.bills} ${where}`,
-          { ...binds }
-        ),
-      ]);
-    } catch (_err) {
-      // Bills table doesn't exist, return empty results
-      bills = [];
-      totalRows = { CNT: 0 };
-    }
+    const [bills, totalRows] = await Promise.all([
+      query<{
+        ID: number;
+        BILL_NUMBER: string | null;
+        BILL_DATE: unknown;
+        SOCIETY_NAME: string;
+        SOCIETY_CODE: string;
+        TOTAL_QUANTITY: number | null;
+        TOTAL_AMOUNT: number | null;
+        FINAL_PAYABLE: number | null;
+        STATUS: string;
+      }>(
+        `SELECT
+           B.BILLID AS ID,
+           B.BILLNO AS BILL_NUMBER,
+           B.BILLDATE AS BILL_DATE,
+           D.DCSNAME AS SOCIETY_NAME,
+           D.DCSDISPLAYCODE AS SOCIETY_CODE,
+           NVL(SUM(BD.QUANTITY), 0) AS TOTAL_QUANTITY,
+           NVL(SUM(BD.CALCULATEDAMOUNT), 0) AS TOTAL_AMOUNT,
+           NVL(B.BILLAMOUNT, 0) AS FINAL_PAYABLE,
+           'fetched' AS STATUS
+         FROM FA_DCSBILL_T B
+         INNER JOIN PI_DCS_M D ON D.DCSCODE = B.DCSCODE
+         LEFT JOIN FA_DCSBILLDETAILS_T BD ON BD.BILLID = B.BILLID
+         ${where}
+         GROUP BY B.BILLID, B.BILLNO, B.BILLDATE, D.DCSNAME, D.DCSDISPLAYCODE, B.BILLAMOUNT
+         ORDER BY B.BILLDATE DESC, B.BILLID DESC
+         OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`,
+        binds
+      ),
+      queryOne<{ CNT: number }>(
+        `SELECT COUNT(*) AS CNT
+           FROM FA_DCSBILL_T B
+           ${where}`,
+        filterBinds
+      ),
+    ]);
 
     res.json({
       data: bills.map((b) => ({
@@ -94,266 +151,223 @@ router.get("/bills", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to list bills");
-    // Return empty results instead of error
-    res.json({
-      data: [],
-      total: 0,
-      page: 1,
-      limit: 20,
-    });
+    res.status(503).json({ error: "Database unavailable or query failed." });
   }
 });
 
 // POST /bills
-router.post("/bills", async (req, res) => {
-  const parsed = CreateBillBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
-
-  try {
-    const society = await queryOne<{
-      ID: number; NAME: string; CODE: string;
-      BANK_NAME: string; BANK_ACCOUNT: string; BANK_IFSC: string;
-    }>(
-      `SELECT ID, NAME, CODE, BANK_NAME, BANK_ACCOUNT, BANK_IFSC
-         FROM ${T.societies} WHERE ID = :id`,
-      { id: parsed.data.societyId }
-    );
-    if (!society) return res.status(400).json({ error: "Society not found" });
-
-    const d = parsed.data;
-    const result = await execute(
-      `INSERT INTO ${T.bills} (
-        BILL_NUMBER, BILL_DATE, FROM_DATE, TO_DATE,
-        SOCIETY_ID, SOCIETY_NAME, SOCIETY_CODE,
-        ROUTE_CODE, SHIFT,
-        BANK_NAME, BANK_ACCOUNT, BANK_IFSC,
-        RATE_FORMULA, LEAD_LOAD_AMOUNT, STATUS,
-        TOTAL_QUANTITY, TOTAL_AMOUNT, TOTAL_DEDUCTIONS, FINAL_PAYABLE,
-        CREATED_AT, UPDATED_AT
-      ) VALUES (
-        :billNumber, TO_DATE(:billDate,'YYYY-MM-DD'), TO_DATE(:fromDate,'YYYY-MM-DD'), TO_DATE(:toDate,'YYYY-MM-DD'),
-        :societyId, :societyName, :societyCode,
-        :routeCode, :shift,
-        :bankName, :bankAccount, :bankIfsc,
-        :rateFormula, :leadLoadAmount, :status,
-        0, 0, 0, 0,
-        SYSDATE, SYSDATE
-      ) RETURNING ID INTO :newId`,
-      {
-        billNumber: d.billNumber,
-        billDate: d.billDate,
-        fromDate: d.fromDate,
-        toDate: d.toDate,
-        societyId: d.societyId,
-        societyName: society.NAME,
-        societyCode: society.CODE,
-        routeCode: d.routeCode,
-        shift: d.shift,
-        bankName: d.bankName ?? society.BANK_NAME ?? null,
-        bankAccount: d.bankAccount ?? society.BANK_ACCOUNT ?? null,
-        bankIfsc: d.bankIfsc ?? society.BANK_IFSC ?? null,
-        rateFormula: d.rateFormula ?? null,
-        leadLoadAmount: d.leadLoadAmount ?? 0,
-        status: d.status ?? "draft",
-        newId: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
-      }
-    );
-
-    const outBinds = result.outBinds as { NEWID: number[] };
-    const newId = outBinds?.NEWID?.[0] ?? (result.outBinds as Record<string, number[]>)?.newId?.[0];
-    if (!newId) return res.status(500).json({ error: "Failed to get new bill ID" });
-
-    const bill = await queryOne<Record<string, unknown>>(
-      `SELECT * FROM ${T.bills} WHERE ID = :id`, { id: newId }
-    );
-    res.status(201).json(formatBill(bill!));
-  } catch (err) {
-    req.log.error({ err }, "Failed to create bill");
-    res.status(500).json({ error: "Internal server error" });
-  }
+router.post("/bills", async (_req, res): Promise<void> => {
+  notSupported(res, "Bill creation is not supported for the production Oracle schema.");
 });
 
 // GET /bills/:id
-router.get("/bills/:id", async (req, res) => {
+router.get("/bills/:id", async (req, res): Promise<void> => {
   const parsed = GetBillParams.safeParse({ id: parseInt(req.params.id, 10) });
-  if (!parsed.success) return res.status(400).json({ error: "Invalid id" });
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
 
   try {
-    const bill = await queryOne<Record<string, unknown>>(
-      `SELECT * FROM ${T.bills} WHERE ID = :id`, { id: parsed.data.id }
-    );
-    if (!bill) return res.status(404).json({ error: "Bill not found" });
+    const context = await getBillContextById(parsed.data.id);
+    if (!context) {
+      res.status(404).json({ error: "Bill not found" });
+      return;
+    }
 
-    const [entries, deductions] = await Promise.all([
-      query<Record<string, unknown>>(
-        `SELECT * FROM ${T.milkEntries} WHERE BILL_ID = :billId ORDER BY ENTRY_DATE`,
-        { billId: parsed.data.id }
-      ),
-      query<Record<string, unknown>>(
-        `SELECT * FROM ${T.deductions} WHERE BILL_ID = :billId`,
-        { billId: parsed.data.id }
-      ),
-    ]);
+    const bill = await getMilkBill({
+      fromDate: formatDateStr(context.BILLFROMDATE),
+      toDate: formatDateStr(context.BILLTILLDATE),
+      dcsCode: context.DCSDISPLAYCODE,
+    });
+
+    const deductions = [
+      ...bill.deductions.standard.map((item, index) => ({
+        id: index + 1,
+        category: "standard",
+        label: item.name,
+        amount: item.amount,
+      })),
+      ...bill.deductions.other.map((item, index) => ({
+        id: 1000 + index + 1,
+        category: "other",
+        label: item.name,
+        amount: item.amount,
+      })),
+      ...bill.deductions.outstanding.map((item, index) => ({
+        id: 2000 + index + 1,
+        category: "outstanding",
+        label: item.name,
+        amount: item.amount,
+      })),
+    ];
 
     res.json({
-      ...formatBill(bill),
-      entries: entries.map(formatEntry),
-      deductions: deductions.map(formatDeduction),
-      priceDifference: Number(bill.PRICE_DIFFERENCE ?? 0),
+      id: bill.header.billId,
+      billNumber: bill.header.billNo,
+      billDate: bill.header.billDate,
+      fromDate: formatDateStr(context.BILLFROMDATE),
+      toDate: formatDateStr(context.BILLTILLDATE),
+      societyId: Number(context.DCSCODE),
+      societyName: bill.header.dcsName,
+      societyCode: bill.header.dcsDisplayCode,
+      routeCode: null,
+      shift: "both",
+      bankName: bill.header.bankName || context.BANKNAME,
+      bankAccount: bill.header.accountNo || context.ACCOUNTNO,
+      bankIfsc: null,
+      rateFormula: bill.header.rateDisplayOnBill ? String(bill.header.rateDisplayOnBill) : null,
+      totalQuantity: bill.totals.quantity,
+      totalAmount: bill.payments.milkCost,
+      totalDeductions: bill.deductions.totalDeductions,
+      leadLoadAmount: bill.payments.headload,
+      finalPayable: bill.netPayable,
+      status: "fetched",
+      createdAt: "",
+      entries: bill.entries.map((entry, index) => ({
+        id: index + 1,
+        billId: bill.header.billId,
+        entryDate: entry.milkDate,
+        shift: entry.shift,
+        quantity: entry.quantity,
+        fatPercent: entry.fat,
+        snfPercent: entry.snf,
+        rate: entry.rate,
+        amount: entry.amount,
+      })),
+      deductions,
+      priceDifference: bill.priceDiff,
     });
+    return;
   } catch (err) {
     req.log.error({ err }, "Failed to get bill");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(503).json({ error: "Database unavailable or query failed." });
+    return;
   }
 });
 
 // PUT /bills/:id
-router.put("/bills/:id", async (req, res) => {
-  const paramParsed = UpdateBillParams.safeParse({ id: parseInt(req.params.id, 10) });
-  if (!paramParsed.success) return res.status(400).json({ error: "Invalid id" });
-
-  const bodyParsed = UpdateBillBody.safeParse(req.body);
-  if (!bodyParsed.success) return res.status(400).json({ error: bodyParsed.error.issues });
-
-  try {
-    const d = bodyParsed.data;
-    const sets: string[] = ["UPDATED_AT = SYSDATE"];
-    const binds: Record<string, unknown> = { id: paramParsed.data.id };
-
-    if (d.billNumber !== undefined) { sets.push("BILL_NUMBER = :billNumber"); binds.billNumber = d.billNumber; }
-    if (d.billDate !== undefined) { sets.push("BILL_DATE = TO_DATE(:billDate,'YYYY-MM-DD')"); binds.billDate = d.billDate; }
-    if (d.fromDate !== undefined) { sets.push("FROM_DATE = TO_DATE(:fromDate,'YYYY-MM-DD')"); binds.fromDate = d.fromDate; }
-    if (d.toDate !== undefined) { sets.push("TO_DATE = TO_DATE(:toDate,'YYYY-MM-DD')"); binds.toDate = d.toDate; }
-    if (d.status !== undefined) { sets.push("STATUS = :status"); binds.status = d.status; }
-    if (d.bankName !== undefined) { sets.push("BANK_NAME = :bankName"); binds.bankName = d.bankName; }
-    if (d.bankAccount !== undefined) { sets.push("BANK_ACCOUNT = :bankAccount"); binds.bankAccount = d.bankAccount; }
-    if (d.bankIfsc !== undefined) { sets.push("BANK_IFSC = :bankIfsc"); binds.bankIfsc = d.bankIfsc; }
-    if (d.rateFormula !== undefined) { sets.push("RATE_FORMULA = :rateFormula"); binds.rateFormula = d.rateFormula; }
-
-    await execute(
-      `UPDATE ${T.bills} SET ${sets.join(", ")} WHERE ID = :id`,
-      binds
-    );
-
-    const updated = await queryOne<Record<string, unknown>>(
-      `SELECT * FROM ${T.bills} WHERE ID = :id`, { id: paramParsed.data.id }
-    );
-    if (!updated) return res.status(404).json({ error: "Bill not found" });
-    res.json(formatBill(updated));
-  } catch (err) {
-    req.log.error({ err }, "Failed to update bill");
-    res.status(500).json({ error: "Internal server error" });
+router.put("/bills/:id", async (req, res): Promise<void> => {
+  const paramParsed = GetBillParams.safeParse({ id: parseInt(req.params.id, 10) });
+  if (!paramParsed.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
   }
+  notSupported(res, "Bill updates are not supported for the production Oracle schema.");
 });
 
 // DELETE /bills/:id
-router.delete("/bills/:id", async (req, res) => {
-  const parsed = DeleteBillParams.safeParse({ id: parseInt(req.params.id, 10) });
-  if (!parsed.success) return res.status(400).json({ error: "Invalid id" });
-
-  try {
-    await Promise.all([
-      execute(`DELETE FROM ${T.milkEntries} WHERE BILL_ID = :id`, { id: parsed.data.id }),
-      execute(`DELETE FROM ${T.deductions} WHERE BILL_ID = :id`, { id: parsed.data.id }),
-    ]);
-    await execute(`DELETE FROM ${T.bills} WHERE ID = :id`, { id: parsed.data.id });
-    res.status(204).send();
-  } catch (err) {
-    req.log.error({ err }, "Failed to delete bill");
-    res.status(500).json({ error: "Internal server error" });
+router.delete("/bills/:id", async (req, res): Promise<void> => {
+  const parsed = GetBillParams.safeParse({ id: parseInt(req.params.id, 10) });
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
   }
+  notSupported(res, "Bill deletion is not supported for the production Oracle schema.");
 });
 
 // GET /bills/:id/entries
-router.get("/bills/:id/entries", async (req, res) => {
+router.get("/bills/:id/entries", async (req, res): Promise<void> => {
   const parsed = GetBillEntriesParams.safeParse({ id: parseInt(req.params.id, 10) });
-  if (!parsed.success) return res.status(400).json({ error: "Invalid id" });
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
 
   try {
-    const entries = await query<Record<string, unknown>>(
-      `SELECT * FROM ${T.milkEntries} WHERE BILL_ID = :billId ORDER BY ENTRY_DATE`,
+    const entries = await query<{
+      MILKDATE: unknown;
+      SHIFT: number;
+      QUANTITY: number | null;
+      FATPERCENTAGE: number | null;
+      SNFPERCENTAGE: number | null;
+      CALCULATEDRATE: number | null;
+      CALCULATEDAMOUNT: number | null;
+    }>(
+      `SELECT
+         MILKDATE,
+         SHIFT,
+         QUANTITY,
+         FATPERCENTAGE,
+         SNFPERCENTAGE,
+         CALCULATEDRATE,
+         CALCULATEDAMOUNT
+       FROM FA_DCSBILLDETAILS_T
+       WHERE BILLID = :billId
+       ORDER BY MILKDATE, SHIFT`,
       { billId: parsed.data.id }
     );
-    res.json(entries.map(formatEntry));
+    res.json(
+      entries.map((entry, index) => ({
+        id: index + 1,
+        billId: parsed.data.id,
+        entryDate: formatDateStr(entry.MILKDATE),
+        shift: Number(entry.SHIFT ?? 0) === 1 ? "E" : "M",
+        quantity: Number(entry.QUANTITY ?? 0),
+        fatPercent: Number(entry.FATPERCENTAGE ?? 0),
+        snfPercent: Number(entry.SNFPERCENTAGE ?? 0),
+        rate: Number(entry.CALCULATEDRATE ?? 0),
+        amount: Number(entry.CALCULATEDAMOUNT ?? 0),
+      }))
+    );
+    return;
   } catch (err) {
     req.log.error({ err }, "Failed to get bill entries");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(503).json({ error: "Database unavailable or query failed." });
+    return;
   }
 });
 
 // GET /bills/:id/deductions
-router.get("/bills/:id/deductions", async (req, res) => {
+router.get("/bills/:id/deductions", async (req, res): Promise<void> => {
   const parsed = GetBillDeductionsParams.safeParse({ id: parseInt(req.params.id, 10) });
-  if (!parsed.success) return res.status(400).json({ error: "Invalid id" });
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
 
   try {
-    const deductions = await query<Record<string, unknown>>(
-      `SELECT * FROM ${T.deductions} WHERE BILL_ID = :billId`,
-      { billId: parsed.data.id }
-    );
-    res.json(deductions.map(formatDeduction));
+    const context = await getBillContextById(parsed.data.id);
+    if (!context) {
+      res.status(404).json({ error: "Bill not found" });
+      return;
+    }
+
+    const bill = await getMilkBill({
+      fromDate: formatDateStr(context.BILLFROMDATE),
+      toDate: formatDateStr(context.BILLTILLDATE),
+      dcsCode: context.DCSDISPLAYCODE,
+    });
+
+    res.json([
+      ...bill.deductions.standard.map((item, index) => ({
+        id: index + 1,
+        billId: parsed.data.id,
+        category: "standard",
+        label: item.name,
+        amount: item.amount,
+      })),
+      ...bill.deductions.other.map((item, index) => ({
+        id: 1000 + index + 1,
+        billId: parsed.data.id,
+        category: "other",
+        label: item.name,
+        amount: item.amount,
+      })),
+      ...bill.deductions.outstanding.map((item, index) => ({
+        id: 2000 + index + 1,
+        billId: parsed.data.id,
+        category: "outstanding",
+        label: item.name,
+        amount: item.amount,
+      })),
+    ]);
+    return;
   } catch (err) {
     req.log.error({ err }, "Failed to get bill deductions");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(503).json({ error: "Database unavailable or query failed." });
+    return;
   }
 });
-
-// ─── Formatters ──────────────────────────────────────────────────────────────
-
-function formatDateStr(d: unknown): string {
-  if (!d) return "";
-  if (d instanceof Date) return d.toISOString().split("T")[0];
-  return String(d).split("T")[0];
-}
-
-function formatBill(b: Record<string, unknown>) {
-  return {
-    id: Number(b.ID),
-    billNumber: b.BILL_NUMBER,
-    billDate: formatDateStr(b.BILL_DATE),
-    fromDate: formatDateStr(b.FROM_DATE),
-    toDate: formatDateStr(b.TO_DATE),
-    societyId: Number(b.SOCIETY_ID),
-    societyName: b.SOCIETY_NAME,
-    societyCode: b.SOCIETY_CODE,
-    routeCode: b.ROUTE_CODE,
-    shift: b.SHIFT,
-    bankName: b.BANK_NAME ?? null,
-    bankAccount: b.BANK_ACCOUNT ?? null,
-    bankIfsc: b.BANK_IFSC ?? null,
-    rateFormula: b.RATE_FORMULA ?? null,
-    totalQuantity: Number(b.TOTAL_QUANTITY ?? 0),
-    totalAmount: Number(b.TOTAL_AMOUNT ?? 0),
-    totalDeductions: Number(b.TOTAL_DEDUCTIONS ?? 0),
-    leadLoadAmount: Number(b.LEAD_LOAD_AMOUNT ?? 0),
-    finalPayable: Number(b.FINAL_PAYABLE ?? 0),
-    status: b.STATUS,
-    createdAt: b.CREATED_AT instanceof Date ? b.CREATED_AT.toISOString() : String(b.CREATED_AT ?? ""),
-  };
-}
-
-function formatEntry(e: Record<string, unknown>) {
-  return {
-    id: Number(e.ID),
-    billId: Number(e.BILL_ID),
-    entryDate: formatDateStr(e.ENTRY_DATE),
-    shift: e.SHIFT,
-    quantity: Number(e.QUANTITY ?? 0),
-    fatPercent: Number(e.FAT_PERCENT ?? 0),
-    snfPercent: Number(e.SNF_PERCENT ?? 0),
-    rate: Number(e.RATE ?? 0),
-    amount: Number(e.AMOUNT ?? 0),
-  };
-}
-
-function formatDeduction(d: Record<string, unknown>) {
-  return {
-    id: Number(d.ID),
-    billId: Number(d.BILL_ID),
-    category: d.CATEGORY,
-    label: d.LABEL,
-    amount: Number(d.AMOUNT ?? 0),
-  };
-}
 
 export default router;
