@@ -1,3 +1,4 @@
+import React from "react";
 import { Link, useLocation } from "wouter";
 import { 
   LayoutDashboard, 
@@ -40,9 +41,38 @@ const centralInputLinks = [
   { href: "/central-input/dcs-monitoring", label: "DCS Monitoring", icon: Activity },
 ];
 
+/**
+ * Find the active sidebar href for the current location.
+ * Prefers exact matches, then the longest prefix match (href + "/").
+ * This prevents "/bills" from activating when on "/bills/fetch".
+ */
+function findActiveHref(
+  links: { href: string }[],
+  location: string,
+): string | null {
+  // Exact match wins immediately
+  const exact = links.find((l) => l.href === location);
+  if (exact) return exact.href;
+
+  // Longest prefix match (the href must be followed by "/" in location)
+  let best: { href: string } | null = null;
+  for (const link of links) {
+    if (link.href === "/") continue;
+    if (location.startsWith(link.href + "/")) {
+      if (!best || link.href.length > best.href.length) {
+        best = link;
+      }
+    }
+  }
+  return best?.href ?? null;
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { phone, logout } = useAuth();
+
+  const allLinks = [...milkBillLinks, ...centralInputLinks];
+  const activeHref = findActiveHref(allLinks, location);
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
@@ -60,7 +90,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="space-y-1">
               {milkBillLinks.map((link) => {
                 const Icon = link.icon;
-                const isActive = location === link.href || (link.href !== '/' && location.startsWith(link.href));
+                const isActive = link.href === activeHref;
                 return (
                   <Link key={link.href} href={link.href}>
                     <span className={cn(
@@ -85,7 +115,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="space-y-1">
               {centralInputLinks.map((link) => {
                 const Icon = link.icon;
-                const isActive = location === link.href || location.startsWith(link.href);
+                const isActive = link.href === activeHref;
                 return (
                   <Link key={link.href} href={link.href}>
                     <span className={cn(
@@ -132,7 +162,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Menu className="w-5 h-5" />
             </Button>
             <h1 className="text-xl font-semibold hidden md:block">
-              {milkBillLinks.concat(centralInputLinks).find(l => location === l.href || (l.href !== '/' && location.startsWith(l.href)))?.label || "Dashboard"}
+              {allLinks.find(l => l.href === activeHref)?.label || "Dashboard"}
             </h1>
           </div>
           
