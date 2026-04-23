@@ -1,0 +1,160 @@
+Update the backend to fetch Milk Bill data from Oracle DB using the exact query flow below.
+
+⚠️ STRICT RULES
+Do NOT change database structure
+Do NOT simplify logic
+Follow steps exactly as provided
+Keep frontend response clean and structured
+Use existing Oracle connection
+🧠 IMPLEMENT THIS FLOW AS A SERVICE
+
+Create a backend function:
+
+getMilkBill({ fromDate, toDate, dcsCode })
+🔹 STEP 1: FETCH BILL HEADER
+
+Use this query:
+
+SELECT
+B.BILLID,
+D.DCSDISPLAYCODE,
+D.DCSNAME,
+B.BILLDATE,
+B.BILLNO,
+B.RATEDISPLAYONBILL,
+B.BILLAMOUNT,
+F.BANKNAME,
+T.ACCOUNTNO
+FROM FA_DCSBILL_T B
+INNER JOIN PI_DCS_M D ON D.DCSCODE = B.DCSCODE
+INNER JOIN PI_DCSBANK_T T ON T.DCSCODE = D.DCSCODE
+INNER JOIN FA_BANK_M F ON T.BANKID = F.BANKID
+WHERE B.BILLFROMDATE = :fromDate
+AND B.BILLTILLDATE = :toDate
+AND T.BANKUSAGEID = 'Z011'
+AND D.DCSDISPLAYCODE = :dcsCode
+
+👉 This returns BILLID → required for all next steps
+
+🔹 STEP 2: FETCH BILL DETAILS
+SELECT
+MILKDATE,
+SHIFT,
+QUALITY,
+QUANTITY,
+FATPERCENTAGE AS FAT,
+SNFPERCENTAGE AS SNF,
+CALCULATEDRATE AS RATE,
+CALCULATEDAMOUNT AS AMOUNT
+FROM FA_DCSBILLDETAILS_T
+WHERE BILLID = :billId
+ORDER BY MILKDATE
+
+👉 Convert:
+
+SHIFT: 1 → E, 0 → M
+🔹 STEP 3: TOTALS
+Total Quantity = SUM(QUANTITY)
+Total Amount = SUM(AMOUNT)
+🔹 STEP 4: PAYMENTS
+Milk Cost:
+SELECT SUM(CALCULATEDAMOUNT)
+FROM FA_DCSBILLDETAILS_T
+WHERE BILLID = :billId
+Headload:
+SELECT SUM(HEADLOADAMOUNT)
+FROM FA_DCSBILLDETAILS_T
+WHERE BILLID = :billId
+Payment Advice:
+SELECT *
+FROM CI_PAYMENTADVICE_T T
+INNER JOIN PI_DCS_M D ON D.DCSCODE = T.DCSID
+WHERE D.DCSDISPLAYCODE = :dcsCode
+AND T.PAYMENTADVICEDATE BETWEEN :fromDate AND :toDate
+🔹 STEP 5: DEDUCTIONS
+Standard:
+SELECT T.DEDUCTIONTRANSNAME, T.DEDUCTIONTRANSAMT
+FROM FA_DEDUCTION_T T
+INNER JOIN PI_DCS_M D ON D.DCSCODE = T.DCSCODE
+WHERE DEDFROMDATE = :fromDate
+AND DEDTODATE = :toDate
+AND D.DCSDISPLAYCODE = :dcsCode
+Other:
+SELECT
+T.AMOUNT,
+M.DEDUCTIONHEADNAME
+FROM FA_CIDEDUCTION_T T
+INNER JOIN PI_DCS_M D ON D.DCSCODE = T.DCSCODE
+INNER JOIN CI_DEDUCTIONHEAD_M M ON T.DEDUCTIONHEADID = M.DEDUCTIONHEADID
+WHERE T.BILLFROMDATE = :fromDate
+AND T.BILLTILLDATE = :toDate
+AND D.DCSDISPLAYCODE = :dcsCode
+Outstanding:
+SELECT
+T.DEDUCTIONHEADNAME,
+T.DEDUCTEDAMOUNT
+FROM FA_DCSWISEDEDHEADWISE_TEMP T
+INNER JOIN PI_DCS_M M ON M.DCSCODE = T.DCSID
+WHERE T.BILLFROMDATE = :prevFromDate
+AND T.BILLTILLDATE = :prevToDate
+AND M.DCSDISPLAYCODE = :dcsCode
+🔹 STEP 6: PRICE DIFFERENCE
+SELECT PRICEDIFFPERIODICALAMT
+FROM FA_PRICEDIFFPERIODICAL_T T
+INNER JOIN PI_DCS_M D ON D.DCSCODE = T.DCSCODE
+WHERE D.DCSDISPLAYCODE = :dcsCode
+AND T.MILKFROMDATE = :prevFromDate
+AND T.MILKTODATE = :prevToDate
+🔹 STEP 7: ADDITIONAL PAYMENTS
+SELECT
+M.SERVICENAME,
+T.PAYMENTADVICEAMOUNT
+FROM CI_PAYMENTADVICE_T T
+INNER JOIN PI_DCS_M D ON D.DCSCODE = T.DCSID
+INNER JOIN CI_SERVICE_M M ON T.SERVICEID = M.SERVICEID
+WHERE D.DCSDISPLAYCODE = :dcsCode
+AND T.PAYMENTADVICEDATE BETWEEN :fromDate AND :toDate
+ORDER BY T.CREATIONDATE
+🔹 STEP 8: FINAL CALCULATION
+
+Compute:
+
+netPayable =
+  milkCost +
+  headload +
+  priceDiff +
+  additionalPayments
+  - totalDeductions
+🧾 FINAL API RESPONSE FORMAT
+
+Return structured response:
+
+{
+  header: {...},
+  entries: [...],
+  totals: {
+    quantity,
+    amount
+  },
+  payments: {
+    milkCost,
+    headload,
+    additional
+  },
+  deductions: {
+    standard: [],
+    other: [],
+    outstanding: []
+  },
+  priceDiff,
+  netPayable
+}
+⚠️ IMPORTANT
+Handle null values from Oracle
+Do NOT expose raw DB column names
+Keep response frontend-friendly
+Use async/await properly
+🎯 GOAL
+Fully working Milk Bill API
+Accurate calculation based on real business logic
+Clean structured response for UI

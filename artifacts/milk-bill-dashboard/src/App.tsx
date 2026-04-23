@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import BillsList from "@/pages/bills/index";
 import NewBill from "@/pages/bills/new";
+import FetchBill from "@/pages/bills/fetch";
 import BillDetail from "@/pages/bills/detail";
 import BankAdvice from "@/pages/bank-advice";
 import Reports from "@/pages/reports";
@@ -34,6 +35,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/bills" component={BillsList} />
         <Route path="/bills/new" component={NewBill} />
+        <Route path="/bills/fetch" component={FetchBill} />
         <Route path="/bills/:id" component={BillDetail} />
         <Route path="/bank-advice" component={BankAdvice} />
         <Route path="/reports" component={Reports} />

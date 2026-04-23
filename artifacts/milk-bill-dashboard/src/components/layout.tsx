@@ -10,7 +10,8 @@ import {
   Activity,
   Menu,
   User,
-  LogOut
+  LogOut,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import { useAuth } from "@/context/AuthContext";
 
 const milkBillLinks = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/bills/fetch", label: "Fetch Bill", icon: Search },
   { href: "/bills", label: "Bills", icon: FileText },
   { href: "/bank-advice", label: "Bank Advice", icon: Landmark },
   { href: "/reports", label: "Reports", icon: BarChart3 },
