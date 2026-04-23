@@ -122,6 +122,11 @@ async function ensureUsersTable(): Promise<void> {
   }
 }
 
+/** Returns true if the Oracle connection pool is up and ready. */
+export function isConnected(): boolean {
+  return initialized && pool !== null;
+}
+
 export async function getConnection(): Promise<oracledb.Connection> {
   if (!pool) {
     throw new Error(
