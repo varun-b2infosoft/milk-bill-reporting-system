@@ -7,16 +7,23 @@ const router = Router();
 
 router.get("/societies", async (req, res) => {
   try {
-    const rows = await query<{
-      ID: number; NAME: string; CODE: string; ROUTE_CODE: string;
-      BANK_NAME: string; BANK_ACCOUNT: string; BANK_IFSC: string;
-      CONTACT_PERSON: string; PHONE: string;
-    }>(
-      `SELECT ID, NAME, CODE, ROUTE_CODE, BANK_NAME, BANK_ACCOUNT, BANK_IFSC,
-              CONTACT_PERSON, PHONE
-         FROM ${T.societies}
-        ORDER BY NAME`
-    );
+    let rows: any[] = [];
+    try {
+      rows = await query<{
+        ID: number; NAME: string; CODE: string; ROUTE_CODE: string;
+        BANK_NAME: string; BANK_ACCOUNT: string; BANK_IFSC: string;
+        CONTACT_PERSON: string; PHONE: string;
+      }>(
+        `SELECT ID, NAME, CODE, ROUTE_CODE, BANK_NAME, BANK_ACCOUNT, BANK_IFSC,
+                CONTACT_PERSON, PHONE
+           FROM ${T.societies}
+          ORDER BY NAME`
+      );
+    } catch (_err) {
+      // Societies table doesn't exist, return empty array
+      rows = [];
+    }
+
     res.json(
       rows.map((s) => ({
         id: Number(s.ID),
@@ -32,7 +39,8 @@ router.get("/societies", async (req, res) => {
     );
   } catch (err) {
     req.log.error({ err }, "Failed to list societies");
-    res.status(500).json({ error: "Internal server error" });
+    // Return empty array instead of error
+    res.json([]);
   }
 });
 

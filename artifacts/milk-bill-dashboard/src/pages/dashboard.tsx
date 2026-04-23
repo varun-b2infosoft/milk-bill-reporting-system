@@ -2,7 +2,7 @@ import { useGetDashboardSummary, useGetRecentBills } from "@workspace/api-client
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency, formatQuantity, cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, Users, Map, Droplet, TrendingUp, TrendingDown } from "lucide-react";
+import { FileText, Users, Map, Droplet, TrendingUp, TrendingDown, Activity } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -49,7 +49,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-         <StatCard
+        <StatCard
           title="Active Societies"
           value={summary?.totalSocieties}
           icon={Users}
@@ -95,16 +95,30 @@ export default function Dashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentBills && recentBills.length > 0 ? (
+                  {Array.isArray(recentBills) && recentBills.length > 0 ? (
                     recentBills.map((bill) => (
                       <TableRow key={bill.id}>
                         <TableCell className="font-medium">{bill.billNumber}</TableCell>
                         <TableCell>{new Date(bill.billDate).toLocaleDateString()}</TableCell>
-                        <TableCell>{bill.societyName} ({bill.societyCode})</TableCell>
-                        <TableCell className="text-right">{formatQuantity(bill.totalQuantity)}</TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(bill.totalAmount)}</TableCell>
                         <TableCell>
-                          <Badge variant={bill.status === "paid" ? "default" : bill.status === "issued" ? "secondary" : "outline"}>
+                          {bill.societyName} ({bill.societyCode})
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatQuantity(bill.totalQuantity)}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(bill.totalAmount)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              bill.status === "paid"
+                                ? "default"
+                                : bill.status === "issued"
+                                  ? "secondary"
+                                  : "outline"
+                            }
+                          >
                             {bill.status}
                           </Badge>
                         </TableCell>
@@ -127,16 +141,16 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ 
-  title, 
-  value, 
-  icon: Icon, 
+function StatCard({
+  title,
+  value,
+  icon: Icon,
   isLoading,
-  alert = false
-}: { 
-  title: string; 
-  value?: string | number; 
-  icon: React.ElementType; 
+  alert = false,
+}: {
+  title: string;
+  value?: string | number;
+  icon: React.ElementType;
   isLoading: boolean;
   alert?: boolean;
 }) {
@@ -153,10 +167,12 @@ function StatCard({
             </p>
           )}
         </div>
-        <div className={cn(
-          "w-12 h-12 rounded-full flex items-center justify-center",
-          alert ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
-        )}>
+        <div
+          className={cn(
+            "w-12 h-12 rounded-full flex items-center justify-center",
+            alert ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary",
+          )}
+        >
           <Icon className="w-6 h-6" />
         </div>
       </CardContent>

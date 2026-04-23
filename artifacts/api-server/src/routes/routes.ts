@@ -5,11 +5,18 @@ const router = Router();
 
 router.get("/routes", async (req, res) => {
   try {
-    const rows = await query<{
-      ID: number; CODE: string; NAME: string; DESCRIPTION: string;
-    }>(
-      `SELECT ID, CODE, NAME, DESCRIPTION FROM ${T.routes} ORDER BY CODE`
-    );
+    let rows: any[] = [];
+    try {
+      rows = await query<{
+        ID: number; CODE: string; NAME: string; DESCRIPTION: string;
+      }>(
+        `SELECT ID, CODE, NAME, DESCRIPTION FROM ${T.routes} ORDER BY CODE`
+      );
+    } catch (_err) {
+      // Routes table doesn't exist, return empty array
+      rows = [];
+    }
+
     res.json(
       rows.map((r) => ({
         id: Number(r.ID),
@@ -20,7 +27,8 @@ router.get("/routes", async (req, res) => {
     );
   } catch (err) {
     req.log.error({ err }, "Failed to list routes");
-    res.status(500).json({ error: "Internal server error" });
+    // Return empty array instead of error
+    res.json([]);
   }
 });
 

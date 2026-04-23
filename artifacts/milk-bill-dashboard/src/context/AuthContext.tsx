@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const API = `${BASE}/api`;
+// API endpoint: use VITE_API_URL if available (for custom deployments),
+// otherwise default to localhost:8080 for local dev
+const API = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
 export type AuthStep = "login" | "otp" | "authenticated";
 
@@ -81,30 +82,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const submitOtp = useCallback(async (otp: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API}/auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, otp }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "OTP verification failed.");
-        return;
+  const submitOtp = useCallback(
+    async (otp: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API}/auth/verify-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone, otp }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error ?? "OTP verification failed.");
+          return;
+        }
+        localStorage.setItem(TOKEN_KEY, data.token);
+        setToken(data.token);
+        setUserId(data.user.userId);
+        setStep("authenticated");
+      } catch {
+        setError("Network error. Please try again.");
+      } finally {
+        setIsLoading(false);
       }
-      localStorage.setItem(TOKEN_KEY, data.token);
-      setToken(data.token);
-      setUserId(data.user.userId);
-      setStep("authenticated");
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [phone]);
+    },
+    [phone],
+  );
 
   const resendOtp = useCallback(async () => {
     setIsLoading(true);
@@ -135,11 +139,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{
-      step, phone, token, userId,
-      submitLogin, submitOtp, resendOtp, logout,
-      isLoading, error, clearError,
-    }}>
+    <AuthContext.Provider
+      value={{
+        step,
+        phone,
+        token,
+        userId,
+        submitLogin,
+        submitOtp,
+        resendOtp,
+        logout,
+        isLoading,
+        error,
+        clearError,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

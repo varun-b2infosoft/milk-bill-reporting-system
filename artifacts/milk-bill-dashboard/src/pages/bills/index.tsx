@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useListBills, useDeleteBill, useListSocieties, useListRoutes } from "@workspace/api-client-react";
+import {
+  useListBills,
+  useDeleteBill,
+  useListSocieties,
+  useListRoutes,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,12 +19,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel,
-  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
-  AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Plus, Eye, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatCurrency, formatQuantity, formatDate, getStatusColor } from "@/lib/utils";
@@ -50,12 +65,15 @@ export default function BillsList() {
 
   const handleDelete = () => {
     if (!deleteId) return;
-    deleteMutation.mutate({ id: deleteId }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListBillsQueryKey() });
-        setDeleteId(null);
+    deleteMutation.mutate(
+      { id: deleteId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListBillsQueryKey() });
+          setDeleteId(null);
+        },
       },
-    });
+    );
   };
 
   const totalPages = data ? Math.ceil(data.total / 15) : 1;
@@ -87,24 +105,42 @@ export default function BillsList() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Societies</SelectItem>
-                  {societies?.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                  ))}
+                  {Array.isArray(societies) &&
+                    societies.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-muted-foreground">From Date</label>
-              <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-8 text-sm w-36" />
+              <Input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="h-8 text-sm w-36"
+              />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-muted-foreground">To Date</label>
-              <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-8 text-sm w-36" />
+              <Input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="h-8 text-sm w-36"
+              />
             </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { setSocietyId(""); setFromDate(""); setToDate(""); setPage(1); }}
+              onClick={() => {
+                setSocietyId("");
+                setFromDate("");
+                setToDate("");
+                setPage(1);
+              }}
             >
               Clear
             </Button>
@@ -119,14 +155,30 @@ export default function BillsList() {
             <Table>
               <TableHeader className="bg-muted/40">
                 <TableRow>
-                  <TableHead className="font-semibold text-xs uppercase tracking-wider">Bill No</TableHead>
-                  <TableHead className="font-semibold text-xs uppercase tracking-wider">Date</TableHead>
-                  <TableHead className="font-semibold text-xs uppercase tracking-wider">Society</TableHead>
-                  <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">Quantity</TableHead>
-                  <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">Amount</TableHead>
-                  <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">Payable</TableHead>
-                  <TableHead className="font-semibold text-xs uppercase tracking-wider">Status</TableHead>
-                  <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">Actions</TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                    Bill No
+                  </TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                    Date
+                  </TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                    Society
+                  </TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">
+                    Quantity
+                  </TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">
+                    Amount
+                  </TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">
+                    Payable
+                  </TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                    Status
+                  </TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -134,7 +186,9 @@ export default function BillsList() {
                   Array.from({ length: 8 }).map((_, i) => (
                     <TableRow key={i}>
                       {Array.from({ length: 8 }).map((_, j) => (
-                        <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                        <TableCell key={j}>
+                          <Skeleton className="h-4 w-full" />
+                        </TableCell>
                       ))}
                     </TableRow>
                   ))
@@ -149,9 +203,15 @@ export default function BillsList() {
                           <p className="text-xs text-muted-foreground">{bill.societyCode}</p>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right text-sm">{formatQuantity(bill.totalQuantity)}</TableCell>
-                      <TableCell className="text-right text-sm">{formatCurrency(bill.totalAmount)}</TableCell>
-                      <TableCell className="text-right text-sm font-semibold">{formatCurrency(bill.finalPayable)}</TableCell>
+                      <TableCell className="text-right text-sm">
+                        {formatQuantity(bill.totalQuantity)}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {formatCurrency(bill.totalAmount)}
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-semibold">
+                        {formatCurrency(bill.finalPayable)}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={getStatusColor(bill.status)} className="capitalize text-xs">
                           {bill.status}
@@ -194,10 +254,20 @@ export default function BillsList() {
                 Page {page} of {totalPages} — {data?.total} bills
               </p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -211,7 +281,8 @@ export default function BillsList() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Bill?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this bill and all associated milk entries and deductions. This action cannot be undone.
+              This will permanently delete this bill and all associated milk entries and deductions.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
