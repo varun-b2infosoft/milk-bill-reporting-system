@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useGetBill } from "@workspace/api-client-react";
 import { getGetBillQueryKey } from "@workspace/api-client-react";
@@ -193,30 +193,29 @@ export default function BillDetail() {
                   const dayQty = dayEntries.reduce((s, e) => s + e.quantity, 0);
                   const dayAmt = dayEntries.reduce((s, e) => s + e.amount, 0);
                   return (
-                    <tbody key={date}>
+                    <React.Fragment key={date}>
                       {dayEntries.map((entry, idx) => (
-                        <tr key={entry.id} className="hover:bg-muted/20 border-b">
+                        <TableRow key={entry.id} className="hover:bg-muted/20">
                           {idx === 0 && (
-                            <td rowSpan={dayEntries.length} className="font-medium align-top pt-3 px-4 border-r border-border/40 text-sm">
+                            <TableCell rowSpan={dayEntries.length} className="font-medium align-top pt-3 border-r border-border/40 text-sm">
                               {formatDate(date)}
-                            </td>
+                            </TableCell>
                           )}
-                          <td className="px-4 py-2 capitalize text-sm">{entry.shift}</td>
-                          <td className="px-4 py-2 text-right text-sm tabular-nums">{entry.quantity.toFixed(3)}</td>
-                          <td className="px-4 py-2 text-right text-sm tabular-nums">{entry.fatPercent.toFixed(2)}</td>
-                          <td className="px-4 py-2 text-right text-sm tabular-nums">{entry.snfPercent.toFixed(2)}</td>
-                          <td className="px-4 py-2 text-right text-sm tabular-nums">{entry.rate.toFixed(2)}</td>
-                          <td className="px-4 py-2 text-right text-sm tabular-nums font-medium">{formatCurrency(entry.amount)}</td>
-                        </tr>
+                          <TableCell className="capitalize text-sm">{entry.shift}</TableCell>
+                          <TableCell className="text-right text-sm tabular-nums">{entry.quantity.toFixed(3)}</TableCell>
+                          <TableCell className="text-right text-sm tabular-nums">{entry.fatPercent.toFixed(2)}</TableCell>
+                          <TableCell className="text-right text-sm tabular-nums">{entry.snfPercent.toFixed(2)}</TableCell>
+                          <TableCell className="text-right text-sm tabular-nums">{entry.rate.toFixed(2)}</TableCell>
+                          <TableCell className="text-right text-sm tabular-nums font-medium">{formatCurrency(entry.amount)}</TableCell>
+                        </TableRow>
                       ))}
-                      <tr className="bg-primary/5 font-medium border-b-2 border-border">
-                        <td className="px-4 py-2 border-r border-border/40"></td>
-                        <td colSpan={2} className="px-4 py-2 text-sm text-muted-foreground">Daily Total</td>
-                        <td className="px-4 py-2 text-right text-sm" colSpan={3}></td>
-                        <td className="px-4 py-2 text-right text-sm tabular-nums">{dayQty.toFixed(3)} L</td>
-                        <td className="px-4 py-2 text-right text-sm tabular-nums">{formatCurrency(dayAmt)}</td>
-                      </tr>
-                    </tbody>
+                      <TableRow className="bg-primary/5 font-medium">
+                        <TableCell className="border-r border-border/40 text-muted-foreground text-sm">Daily Total</TableCell>
+                        <TableCell colSpan={4}></TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">{dayQty.toFixed(3)} L</TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">{formatCurrency(dayAmt)}</TableCell>
+                      </TableRow>
+                    </React.Fragment>
                   );
                 })}
                 {(!bill.entries || bill.entries.length === 0) && (

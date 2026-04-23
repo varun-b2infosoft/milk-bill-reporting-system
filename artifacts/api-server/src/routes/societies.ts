@@ -1,23 +1,33 @@
 import { Router } from "express";
-import { db, societiesTable } from "@workspace/db";
+import oracledb from "oracledb";
+import { query, execute, queryOne, T } from "../lib/oracle";
 import { CreateSocietyBody } from "@workspace/api-zod";
 
 const router = Router();
 
 router.get("/societies", async (req, res) => {
   try {
-    const societies = await db.select().from(societiesTable).orderBy(societiesTable.name);
+    const rows = await query<{
+      ID: number; NAME: string; CODE: string; ROUTE_CODE: string;
+      BANK_NAME: string; BANK_ACCOUNT: string; BANK_IFSC: string;
+      CONTACT_PERSON: string; PHONE: string;
+    }>(
+      `SELECT ID, NAME, CODE, ROUTE_CODE, BANK_NAME, BANK_ACCOUNT, BANK_IFSC,
+              CONTACT_PERSON, PHONE
+         FROM ${T.societies}
+        ORDER BY NAME`
+    );
     res.json(
-      societies.map((s) => ({
-        id: s.id,
-        name: s.name,
-        code: s.code,
-        routeCode: s.routeCode,
-        bankName: s.bankName,
-        bankAccount: s.bankAccount,
-        bankIfsc: s.bankIfsc,
-        contactPerson: s.contactPerson,
-        phone: s.phone,
+      rows.map((s) => ({
+        id: Number(s.ID),
+        name: s.NAME,
+        code: s.CODE,
+        routeCode: s.ROUTE_CODE ?? null,
+        bankName: s.BANK_NAME ?? null,
+        bankAccount: s.BANK_ACCOUNT ?? null,
+        bankIfsc: s.BANK_IFSC ?? null,
+        contactPerson: s.CONTACT_PERSON ?? null,
+        phone: s.PHONE ?? null,
       }))
     );
   } catch (err) {
@@ -28,21 +38,45 @@ router.get("/societies", async (req, res) => {
 
 router.post("/societies", async (req, res) => {
   const parsed = CreateSocietyBody.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: parsed.error.issues });
-  }
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+
   try {
-    const [society] = await db.insert(societiesTable).values(parsed.data).returning();
+    const d = parsed.data;
+    const result = await execute(
+      `INSERT INTO ${T.societies} (NAME, CODE, ROUTE_CODE, BANK_NAME, BANK_ACCOUNT, BANK_IFSC, CONTACT_PERSON, PHONE)
+       VALUES (:name, :code, :routeCode, :bankName, :bankAccount, :bankIfsc, :contactPerson, :phone)
+       RETURNING ID INTO :newId`,
+      {
+        name: d.name,
+        code: d.code,
+        routeCode: d.routeCode ?? null,
+        bankName: d.bankName ?? null,
+        bankAccount: d.bankAccount ?? null,
+        bankIfsc: d.bankIfsc ?? null,
+        contactPerson: d.contactPerson ?? null,
+        phone: d.phone ?? null,
+        newId: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
+      }
+    );
+
+    const outBinds = result.outBinds as Record<string, number[]>;
+    const newId = outBinds?.newId?.[0] ?? outBinds?.NEWID?.[0];
+    const society = await queryOne<Record<string, unknown>>(
+      `SELECT ID, NAME, CODE, ROUTE_CODE, BANK_NAME, BANK_ACCOUNT, BANK_IFSC, CONTACT_PERSON, PHONE
+         FROM ${T.societies} WHERE ID = :id`,
+      { id: newId }
+    );
+
     res.status(201).json({
-      id: society.id,
-      name: society.name,
-      code: society.code,
-      routeCode: society.routeCode,
-      bankName: society.bankName,
-      bankAccount: society.bankAccount,
-      bankIfsc: society.bankIfsc,
-      contactPerson: society.contactPerson,
-      phone: society.phone,
+      id: Number(society?.ID),
+      name: society?.NAME,
+      code: society?.CODE,
+      routeCode: society?.ROUTE_CODE ?? null,
+      bankName: society?.BANK_NAME ?? null,
+      bankAccount: society?.BANK_ACCOUNT ?? null,
+      bankIfsc: society?.BANK_IFSC ?? null,
+      contactPerson: society?.CONTACT_PERSON ?? null,
+      phone: society?.PHONE ?? null,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to create society");

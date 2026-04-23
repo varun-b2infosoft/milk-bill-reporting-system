@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { db, billsTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { query, queryOne, T } from "../lib/oracle";
 import { GetMonthlySummaryQueryParams, GetYearlySummaryQueryParams } from "@workspace/api-zod";
 
 const router = Router();
@@ -11,43 +10,48 @@ router.get("/reports/monthly-summary", async (req, res) => {
 
   try {
     const { year, month } = parsed.data;
+    const binds: Record<string, unknown> = { year };
+    let monthFilter = "";
+    if (month) {
+      monthFilter = "AND EXTRACT(MONTH FROM BILL_DATE) = :month";
+      binds.month = month;
+    }
 
-    const rows = await db
-      .select({
-        month: sql<number>`EXTRACT(MONTH FROM ${billsTable.billDate}::date)::int`,
-        year: sql<number>`EXTRACT(YEAR FROM ${billsTable.billDate}::date)::int`,
-        totalBills: sql<number>`COUNT(*)::int`,
-        totalQuantity: sql<number>`COALESCE(SUM(${billsTable.totalQuantity}::numeric), 0)`,
-        totalAmount: sql<number>`COALESCE(SUM(${billsTable.totalAmount}::numeric), 0)`,
-        totalDeductions: sql<number>`COALESCE(SUM(${billsTable.totalDeductions}::numeric), 0)`,
-        totalPayable: sql<number>`COALESCE(SUM(${billsTable.finalPayable}::numeric), 0)`,
-      })
-      .from(billsTable)
-      .where(
-        and(
-          sql`EXTRACT(YEAR FROM ${billsTable.billDate}::date) = ${year}`,
-          month ? sql`EXTRACT(MONTH FROM ${billsTable.billDate}::date) = ${month}` : undefined
-        )
-      )
-      .groupBy(
-        sql`EXTRACT(YEAR FROM ${billsTable.billDate}::date)`,
-        sql`EXTRACT(MONTH FROM ${billsTable.billDate}::date)`
-      )
-      .orderBy(
-        sql`EXTRACT(MONTH FROM ${billsTable.billDate}::date)`
-      );
+    const rows = await query<{
+      MONTH_NUM: number; YEAR_NUM: number; TOTAL_BILLS: number;
+      TOTAL_QUANTITY: number; TOTAL_AMOUNT: number;
+      TOTAL_DEDUCTIONS: number; TOTAL_PAYABLE: number;
+      AVG_FAT: number; AVG_SNF: number;
+    }>(
+      `SELECT
+         EXTRACT(MONTH FROM BILL_DATE) AS MONTH_NUM,
+         EXTRACT(YEAR FROM BILL_DATE) AS YEAR_NUM,
+         COUNT(*) AS TOTAL_BILLS,
+         COALESCE(SUM(TOTAL_QUANTITY), 0) AS TOTAL_QUANTITY,
+         COALESCE(SUM(TOTAL_AMOUNT), 0) AS TOTAL_AMOUNT,
+         COALESCE(SUM(TOTAL_DEDUCTIONS), 0) AS TOTAL_DEDUCTIONS,
+         COALESCE(SUM(FINAL_PAYABLE), 0) AS TOTAL_PAYABLE,
+         4.2 AS AVG_FAT,
+         8.5 AS AVG_SNF
+       FROM ${T.bills}
+       WHERE EXTRACT(YEAR FROM BILL_DATE) = :year
+       ${monthFilter}
+       GROUP BY EXTRACT(YEAR FROM BILL_DATE), EXTRACT(MONTH FROM BILL_DATE)
+       ORDER BY EXTRACT(MONTH FROM BILL_DATE)`,
+      binds
+    );
 
     res.json(
       rows.map((r) => ({
-        month: r.month,
-        year: r.year,
-        totalBills: r.totalBills,
-        totalQuantity: parseFloat(String(r.totalQuantity)),
-        totalAmount: parseFloat(String(r.totalAmount)),
-        totalDeductions: parseFloat(String(r.totalDeductions)),
-        totalPayable: parseFloat(String(r.totalPayable)),
-        avgFat: 4.2,
-        avgSnf: 8.5,
+        month: Number(r.MONTH_NUM),
+        year: Number(r.YEAR_NUM),
+        totalBills: Number(r.TOTAL_BILLS),
+        totalQuantity: Number(r.TOTAL_QUANTITY),
+        totalAmount: Number(r.TOTAL_AMOUNT),
+        totalDeductions: Number(r.TOTAL_DEDUCTIONS),
+        totalPayable: Number(r.TOTAL_PAYABLE),
+        avgFat: Number(r.AVG_FAT),
+        avgSnf: Number(r.AVG_SNF),
       }))
     );
   } catch (err) {
@@ -64,50 +68,56 @@ router.get("/reports/yearly-summary", async (req, res) => {
     const { year } = parsed.data;
 
     const [yearRow, monthRows] = await Promise.all([
-      db
-        .select({
-          totalBills: sql<number>`COUNT(*)::int`,
-          totalQuantity: sql<number>`COALESCE(SUM(${billsTable.totalQuantity}::numeric), 0)`,
-          totalAmount: sql<number>`COALESCE(SUM(${billsTable.totalAmount}::numeric), 0)`,
-          totalPayable: sql<number>`COALESCE(SUM(${billsTable.finalPayable}::numeric), 0)`,
-        })
-        .from(billsTable)
-        .where(sql`EXTRACT(YEAR FROM ${billsTable.billDate}::date) = ${year}`),
-      db
-        .select({
-          month: sql<number>`EXTRACT(MONTH FROM ${billsTable.billDate}::date)::int`,
-          year: sql<number>`EXTRACT(YEAR FROM ${billsTable.billDate}::date)::int`,
-          totalBills: sql<number>`COUNT(*)::int`,
-          totalQuantity: sql<number>`COALESCE(SUM(${billsTable.totalQuantity}::numeric), 0)`,
-          totalAmount: sql<number>`COALESCE(SUM(${billsTable.totalAmount}::numeric), 0)`,
-          totalDeductions: sql<number>`COALESCE(SUM(${billsTable.totalDeductions}::numeric), 0)`,
-          totalPayable: sql<number>`COALESCE(SUM(${billsTable.finalPayable}::numeric), 0)`,
-        })
-        .from(billsTable)
-        .where(sql`EXTRACT(YEAR FROM ${billsTable.billDate}::date) = ${year}`)
-        .groupBy(
-          sql`EXTRACT(YEAR FROM ${billsTable.billDate}::date)`,
-          sql`EXTRACT(MONTH FROM ${billsTable.billDate}::date)`
-        )
-        .orderBy(sql`EXTRACT(MONTH FROM ${billsTable.billDate}::date)`),
+      queryOne<{
+        TOTAL_BILLS: number; TOTAL_QUANTITY: number;
+        TOTAL_AMOUNT: number; TOTAL_PAYABLE: number;
+      }>(
+        `SELECT
+           COUNT(*) AS TOTAL_BILLS,
+           COALESCE(SUM(TOTAL_QUANTITY), 0) AS TOTAL_QUANTITY,
+           COALESCE(SUM(TOTAL_AMOUNT), 0) AS TOTAL_AMOUNT,
+           COALESCE(SUM(FINAL_PAYABLE), 0) AS TOTAL_PAYABLE
+         FROM ${T.bills}
+         WHERE EXTRACT(YEAR FROM BILL_DATE) = :year`,
+        { year }
+      ),
+      query<{
+        MONTH_NUM: number; YEAR_NUM: number; TOTAL_BILLS: number;
+        TOTAL_QUANTITY: number; TOTAL_AMOUNT: number;
+        TOTAL_DEDUCTIONS: number; TOTAL_PAYABLE: number;
+      }>(
+        `SELECT
+           EXTRACT(MONTH FROM BILL_DATE) AS MONTH_NUM,
+           EXTRACT(YEAR FROM BILL_DATE) AS YEAR_NUM,
+           COUNT(*) AS TOTAL_BILLS,
+           COALESCE(SUM(TOTAL_QUANTITY), 0) AS TOTAL_QUANTITY,
+           COALESCE(SUM(TOTAL_AMOUNT), 0) AS TOTAL_AMOUNT,
+           COALESCE(SUM(TOTAL_DEDUCTIONS), 0) AS TOTAL_DEDUCTIONS,
+           COALESCE(SUM(FINAL_PAYABLE), 0) AS TOTAL_PAYABLE
+         FROM ${T.bills}
+         WHERE EXTRACT(YEAR FROM BILL_DATE) = :year
+         GROUP BY EXTRACT(YEAR FROM BILL_DATE), EXTRACT(MONTH FROM BILL_DATE)
+         ORDER BY EXTRACT(MONTH FROM BILL_DATE)`,
+        { year }
+      ),
     ]);
 
-    const yr = yearRow[0] ?? { totalBills: 0, totalQuantity: 0, totalAmount: 0, totalPayable: 0 };
+    const yr = yearRow ?? { TOTAL_BILLS: 0, TOTAL_QUANTITY: 0, TOTAL_AMOUNT: 0, TOTAL_PAYABLE: 0 };
 
     res.json({
       year,
-      totalBills: yr.totalBills,
-      totalQuantity: parseFloat(String(yr.totalQuantity)),
-      totalAmount: parseFloat(String(yr.totalAmount)),
-      totalPayable: parseFloat(String(yr.totalPayable)),
+      totalBills: Number(yr.TOTAL_BILLS),
+      totalQuantity: Number(yr.TOTAL_QUANTITY),
+      totalAmount: Number(yr.TOTAL_AMOUNT),
+      totalPayable: Number(yr.TOTAL_PAYABLE),
       monthlyBreakdown: monthRows.map((r) => ({
-        month: r.month,
-        year: r.year,
-        totalBills: r.totalBills,
-        totalQuantity: parseFloat(String(r.totalQuantity)),
-        totalAmount: parseFloat(String(r.totalAmount)),
-        totalDeductions: parseFloat(String(r.totalDeductions)),
-        totalPayable: parseFloat(String(r.totalPayable)),
+        month: Number(r.MONTH_NUM),
+        year: Number(r.YEAR_NUM),
+        totalBills: Number(r.TOTAL_BILLS),
+        totalQuantity: Number(r.TOTAL_QUANTITY),
+        totalAmount: Number(r.TOTAL_AMOUNT),
+        totalDeductions: Number(r.TOTAL_DEDUCTIONS),
+        totalPayable: Number(r.TOTAL_PAYABLE),
         avgFat: 4.2,
         avgSnf: 8.5,
       })),

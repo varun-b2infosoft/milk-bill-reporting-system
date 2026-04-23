@@ -1,17 +1,21 @@
 import { Router } from "express";
-import { db, routesTable } from "@workspace/db";
+import { query, T } from "../lib/oracle";
 
 const router = Router();
 
 router.get("/routes", async (req, res) => {
   try {
-    const routes = await db.select().from(routesTable).orderBy(routesTable.code);
+    const rows = await query<{
+      ID: number; CODE: string; NAME: string; DESCRIPTION: string;
+    }>(
+      `SELECT ID, CODE, NAME, DESCRIPTION FROM ${T.routes} ORDER BY CODE`
+    );
     res.json(
-      routes.map((r) => ({
-        id: r.id,
-        code: r.code,
-        name: r.name,
-        description: r.description,
+      rows.map((r) => ({
+        id: Number(r.ID),
+        code: r.CODE,
+        name: r.NAME,
+        description: r.DESCRIPTION ?? null,
       }))
     );
   } catch (err) {
