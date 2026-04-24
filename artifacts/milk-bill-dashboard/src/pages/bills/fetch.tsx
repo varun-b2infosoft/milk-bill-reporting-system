@@ -45,6 +45,23 @@ function fixed2(value: number): string {
   return Number.isFinite(value) ? value.toFixed(2) : "0.00";
 }
 
+function formatRateDisplay(value: number | string | null | undefined): string {
+  if (value == null) return "-";
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? `${value.toFixed(2)}` : "-";
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return "-";
+
+  const numeric = Number(trimmed);
+  if (!Number.isNaN(numeric) && Number.isFinite(numeric)) {
+    return numeric.toFixed(2);
+  }
+
+  return trimmed;
+}
+
 // ─── Convert number to words ──────────────────────────────────────────────────
 function numberToWords(num: number): string {
   const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
@@ -129,7 +146,7 @@ interface BillHeader {
   dcsName: string;
   billDate: string;
   billNo: string | null;
-  rateDisplayOnBill: number;
+  rateDisplayOnBill: number | string;
   billAmount: number;
   bankName: string;
   accountNo: string;
@@ -519,7 +536,7 @@ export default function FetchBill() {
                       Rate (Display)
                     </p>
                     <p className="text-sm font-semibold">
-                      ₹{bill.header.rateDisplayOnBill?.toFixed(2)}
+                      {formatRateDisplay(bill.header.rateDisplayOnBill)}
                     </p>
                   </div>
                 </div>
@@ -1002,7 +1019,7 @@ export default function FetchBill() {
               <div>Head Load: KG {fixed2(bill.payments.headload)}</div>
               <div className="text-center">Shift: 0</div>
               <div className="text-right">
-                Rate:{fixed2(bill.header.rateDisplayOnBill)} KG FAT + 2.00 + 0 SPD
+                Rate: {formatRateDisplay(bill.header.rateDisplayOnBill)}
               </div>
             </div>
 

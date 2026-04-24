@@ -34,7 +34,7 @@ export interface BillHeader {
   dcsName: string;
   billDate: string;
   billNo: string | null;
-  rateDisplayOnBill: number;
+  rateDisplayOnBill: string;
   billAmount: number;
   bankName: string;
   accountNo: string;
@@ -135,7 +135,7 @@ export async function getMilkBill(input: MilkBillInput): Promise<MilkBillResult>
     DCSNAME: string;
     BILLDATE: unknown;
     BILLNO: string | null;
-    RATEDISPLAYONBILL: number;
+    RATEDISPLAYONBILL: string | number | null;
     BILLAMOUNT: number;
     BANKNAME: string;
     ACCOUNTNO: string;
@@ -175,7 +175,8 @@ export async function getMilkBill(input: MilkBillInput): Promise<MilkBillResult>
     dcsName: headerRow.DCSNAME,
     billDate: fmtDate(headerRow.BILLDATE),
     billNo: headerRow.BILLNO ?? null,
-    rateDisplayOnBill: num(headerRow.RATEDISPLAYONBILL),
+    rateDisplayOnBill:
+      headerRow.RATEDISPLAYONBILL == null ? "" : String(headerRow.RATEDISPLAYONBILL).trim(),
     billAmount: num(headerRow.BILLAMOUNT),
     bankName: headerRow.BANKNAME,
     accountNo: headerRow.ACCOUNTNO,

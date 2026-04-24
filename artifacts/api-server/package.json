@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "PORT=${PORT:-${API_PORT:-8081}} NODE_ENV=development pnpm run build && PORT=${PORT:-${API_PORT:-8081}} NODE_ENV=development pnpm run start",
+    "dev:quiet": "PORT=${PORT:-${API_PORT:-8081}} NODE_ENV=development QUIET_STARTUP=1 LOG_LEVEL=error pnpm run build:quiet && PORT=${PORT:-${API_PORT:-8081}} NODE_ENV=development QUIET_STARTUP=1 LOG_LEVEL=error pnpm run start",
     "build": "node ./build.mjs",
+    "build:quiet": "ESBUILD_LOG_LEVEL=error node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

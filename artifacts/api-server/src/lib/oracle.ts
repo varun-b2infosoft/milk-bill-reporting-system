@@ -47,6 +47,11 @@ export async function initOraclePool(): Promise<void> {
 }
 
 async function discoverTables(): Promise<void> {
+  if (Object.keys(TABLE_PATTERNS).length === 0) {
+    logger.debug("Skipping table discovery (no TABLE_PATTERNS configured)");
+    return;
+  }
+
   const conn = await pool!.getConnection();
   try {
     // Query all tables in the current user's schema
@@ -59,7 +64,7 @@ async function discoverTables(): Promise<void> {
     const existingTables = new Set(
       (result.rows ?? []).map((r: { TABLE_NAME: string }) => r.TABLE_NAME.toUpperCase())
     );
-    logger.info({ tables: [...existingTables] }, "Oracle tables discovered");
+    logger.info({ tableCount: existingTables.size }, "Oracle tables discovered");
 
     for (const [entity, patterns] of Object.entries(TABLE_PATTERNS)) {
       const found = patterns.find((p) => existingTables.has(p.toUpperCase()));
@@ -191,9 +196,20 @@ export async function count(
 
 export async function closePool(): Promise<void> {
   if (pool) {
-    await pool.close(0);
-    pool = null;
-    initialized = false;
-    logger.info("Oracle connection pool closed");
+    try {
+      await pool.close(0);
+      logger.info("Oracle connection pool closed");
+    } catch (err: unknown) {
+      const code = (err as { code?: string } | null)?.code;
+      // NJS-064 occurs when close is called while the pool is already closing.
+      if (code === "NJS-064") {
+        logger.info("Oracle connection pool already closing");
+      } else {
+        throw err;
+      }
+    } finally {
+      pool = null;
+      initialized = false;
+    }
   }
 }

@@ -34,18 +34,36 @@ async function start() {
 
   app.listen(port, (err) => {
     if (err) {
-      logger.error({ err }, "Error listening on port");
+      const listenErr = err as { code?: string; message?: string };
+      if (listenErr.code === "EADDRINUSE") {
+        logger.error({ port }, "Port already in use. Stop the existing server or use a different PORT.");
+      } else {
+        logger.error({ err }, "Error listening on port");
+      }
       process.exit(1);
     }
     logger.info({ port }, "Server listening");
   });
 
-  // Graceful shutdown
-  for (const sig of ["SIGTERM", "SIGINT"]) {
+  // Graceful shutdown: handle repeated signals without double-closing resources.
+  let shuttingDown = false;
+  for (const sig of ["SIGTERM", "SIGINT"] as const) {
     process.on(sig, async () => {
+      if (shuttingDown) {
+        logger.info({ sig }, "Shutdown already in progress");
+        return;
+      }
+
+      shuttingDown = true;
       logger.info({ sig }, "Shutting down …");
-      await closePool();
-      process.exit(0);
+
+      try {
+        await closePool();
+        process.exit(0);
+      } catch (err) {
+        logger.warn({ err }, "Error while closing Oracle pool during shutdown");
+        process.exit(0);
+      }
     });
   }
 }

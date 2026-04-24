@@ -8,7 +8,7 @@ async function createTestUser() {
   try {
     connection = await oracledb.getConnection({
       user: "JD2",
-      password: "jd2",
+      password: "Oracle123",
       connectionString: "192.168.1.35:1521/ORCLPDB1",
     });
 
