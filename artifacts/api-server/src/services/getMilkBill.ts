@@ -348,7 +348,10 @@ export async function getMilkBill(input: MilkBillInput): Promise<MilkBillResult>
   }
 
   // ── STEP 8: Net Payable ─────────────────────────────────────────────────
-  const netPayable = milkCost + headload + priceDiff + additionalTotal - totalDeductions;
+  // The bill header already carries the final payable amount from Oracle.
+  // Keep the component breakdowns for display, but use the header amount
+  // as the authoritative net payable to avoid double-counting price diff.
+  const netPayable = header.billAmount;
 
   return {
     header,

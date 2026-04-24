@@ -1,12 +1,12 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { 
-  LayoutDashboard, 
-  Landmark, 
-  BarChart3, 
-  ShoppingCart, 
-  TrendingUp, 
-  Target, 
+import {
+  LayoutDashboard,
+  Landmark,
+  BarChart3,
+  ShoppingCart,
+  TrendingUp,
+  Target,
   Activity,
   Menu,
   User,
@@ -43,10 +43,7 @@ const centralInputLinks = [
  * Find the active sidebar href for the current location.
  * Prefers exact matches, then the longest prefix match (href + "/").
  */
-function findActiveHref(
-  links: { href: string }[],
-  location: string,
-): string | null {
+function findActiveHref(links: { href: string }[], location: string): string | null {
   const exact = links.find((l) => l.href === location);
   if (exact) return exact.href;
 
@@ -70,9 +67,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const activeHref = findActiveHref(allLinks, location);
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden print:block print:h-auto print:overflow-visible print:bg-white">
       {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col">
+      <aside className="w-64 flex-shrink-0 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col print:hidden">
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border/50">
           <span className="font-bold text-xl tracking-tight">Milk Bill System</span>
         </div>
@@ -88,12 +85,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 const isActive = link.href === activeHref;
                 return (
                   <Link key={link.href} href={link.href}>
-                    <span className={cn(
-                      "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer",
-                      isActive 
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-4 border-white" 
-                        : "text-sidebar-foreground/90 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-                    )}>
+                    <span
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer",
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-4 border-white"
+                          : "text-sidebar-foreground/90 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+                      )}
+                    >
                       <Icon className="w-4 h-4" />
                       {link.label}
                     </span>
@@ -113,12 +112,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 const isActive = link.href === activeHref;
                 return (
                   <Link key={link.href} href={link.href}>
-                    <span className={cn(
-                      "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer",
-                      isActive 
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-4 border-white" 
-                        : "text-sidebar-foreground/90 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-                    )}>
+                    <span
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer",
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-4 border-white"
+                          : "text-sidebar-foreground/90 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+                      )}
+                    >
                       <Icon className="w-4 h-4" />
                       {link.label}
                     </span>
@@ -135,7 +136,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <User className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="font-medium text-white truncate">{phone ? `+91 ${phone}` : "Admin User"}</p>
+              <p className="font-medium text-white truncate">
+                {phone ? `+91 ${phone}` : "Admin User"}
+              </p>
             </div>
             <button
               onClick={logout}
@@ -149,18 +152,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden print:block print:w-full print:overflow-visible">
         {/* Top Navbar */}
-        <header className="h-16 flex-shrink-0 bg-card border-b flex items-center justify-between px-6 z-10">
+        <header className="h-16 flex-shrink-0 bg-card border-b flex items-center justify-between px-6 z-10 print:hidden">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" className="md:hidden">
               <Menu className="w-5 h-5" />
             </Button>
             <h1 className="text-xl font-semibold hidden md:block">
-              {allLinks.find(l => l.href === activeHref)?.label || "Dashboard"}
+              {allLinks.find((l) => l.href === activeHref)?.label || "Dashboard"}
             </h1>
           </div>
-          
+
           <div className="flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -190,7 +193,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-6 relative">
+        <div className="flex-1 overflow-y-auto p-6 relative print:overflow-visible print:p-0">
           {children}
         </div>
       </main>
