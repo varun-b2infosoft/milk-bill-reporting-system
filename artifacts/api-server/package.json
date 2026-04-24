@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "PORT=${PORT:-8080} NODE_ENV=development pnpm run build && PORT=${PORT:-8080} NODE_ENV=development pnpm run start",
+    "dev": "PORT=${PORT:-${API_PORT:-8081}} NODE_ENV=development pnpm run build && PORT=${PORT:-${API_PORT:-8081}} NODE_ENV=development pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"

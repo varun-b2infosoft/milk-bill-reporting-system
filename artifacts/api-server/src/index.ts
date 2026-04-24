@@ -20,7 +20,7 @@ async function start() {
   // Attempt to connect to Oracle — server starts regardless of outcome.
   // If Oracle is unreachable (e.g., private network from cloud), all DB
   // endpoints will return 503 until connectivity is established.
-  logger.info("Connecting to Oracle DB at 192.168.1.30:1521/ORCLPDB1 …");
+  logger.info("Connecting to Oracle DB at 192.168.1.35:1521/ORCLPDB1 …");
   try {
     await initOraclePool();
     logger.info("Oracle DB connected successfully");
@@ -28,7 +28,7 @@ async function start() {
     logger.error(
       { err },
       "Oracle DB connection failed — server will start but DB endpoints will return 503 until Oracle is reachable. " +
-      "Note: 192.168.1.30 is a private network address — ensure this server can reach it."
+      "Note: 192.168.1.35 is a private network address — ensure this server can reach it."
     );
   }
 

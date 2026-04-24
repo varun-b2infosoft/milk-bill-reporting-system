@@ -11,7 +11,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
-- **Database**: Oracle DB 19c (`192.168.1.30:1521/ORCLPDB1`, user `JD2`) via `oracledb` — private LAN only
+- **Database**: Oracle DB 19c (`192.168.1.35:1521/ORCLPDB1`, user `JD2`) via `oracledb` — private LAN only
 - **Auth**: Phone + Password + 6-digit OTP (2-step), JWT tokens via `jsonwebtoken`, passwords via `bcryptjs`
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
@@ -30,10 +30,12 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 ## Project: Milk Bill Reporting System
 
 ### Artifacts
+
 1. **API Server** (`artifacts/api-server`) — Express API on port 8080
 2. **Milk Bill Dashboard** (`artifacts/milk-bill-dashboard`) — React/Vite web app at `/`
 
 ### Design System
+
 - Primary blue: `#0B5FA5` (hsl 207 88% 35%)
 - Background: `#F5F7FA` (hsl 216 33% 97%)
 - Green accent: `#4CAF50` (hsl 122 39% 49%)
@@ -41,7 +43,9 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - Radius: 8px, No gradients, no emojis, Indian Rupee (₹) formatting, Liters (L) for quantities
 
 ### Pages Built
+
 **Milk Bill section:**
+
 - `/` — Dashboard with KPI cards and recent bills table
 - `/bills` — Bills list with filter, paginated table, delete dialog
 - `/bills/new` — Create bill form (collapsible bank details section)
@@ -50,20 +54,24 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - `/reports` — Monthly/Yearly reports with Recharts bar chart
 
 **Central Input section:**
+
 - `/central-input/purchases` — Purchase records with add dialog
 - `/central-input/performance` — Society performance vs. targets (card view with progress bars)
 - `/central-input/targets` — Target setting with progress bar column
 - `/central-input/dcs-monitoring` — Quality test monitoring with pass/fail badges
 
 ### DB Schema (Oracle — raw SQL, no ORM)
+
 Business tables: `BILLS`, `SOCIETIES`, `ROUTES`, `MILK_ENTRIES`, `DEDUCTIONS`, `PURCHASES`, `TARGETS`, `DCS_RECORDS` (discovered dynamically via `USER_TABLES` in `oracle.ts`)
 Auth table: `APP_USERS` (auto-created on startup) — columns: ID, PHONE, PASSWORD_HASH, IS_ACTIVE, CREATED_AT
 
-**Adding users:** Run `artifacts/api-server/scripts/setup-auth.sql` in SQL Developer / SQL*Plus.
+**Adding users:** Run `artifacts/api-server/scripts/setup-auth.sql` in SQL Developer / SQL\*Plus.
 Generate bcrypt hash: `node -e "require('bcryptjs').hash('YourPwd',12).then(h=>console.log(h))"`
 
 ### API Routes
+
 All routes prefixed with `/api`:
+
 - `POST /api/auth/login` — validate phone+password, generate OTP (logged to console), return success
 - `POST /api/auth/verify-otp` — verify 6-digit OTP, return JWT token (8h expiry)
 - `POST /api/auth/resend-otp` — regenerate and log a fresh OTP
@@ -79,9 +87,11 @@ All routes prefixed with `/api`:
 - `GET /api/dcs-monitoring`
 
 ### Helper Utilities (`src/lib/utils.ts`)
+
 `formatCurrency`, `formatQuantity`, `formatDate`, `formatPercent`, `getStatusColor`, `MONTH_NAMES`, `cn`
 
 ### Important Notes
+
 - `@workspace/api-client-react` is imported everywhere (never relative paths)
 - Zod index.ts uses explicit non-conflicting type exports to avoid codegen conflicts
 - Bill detail sticky footer: `fixed bottom-0 left-64 right-0` (sidebar is `w-64`)

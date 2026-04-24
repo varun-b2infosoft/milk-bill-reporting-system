@@ -10,7 +10,7 @@ Use existing Oracle connection
 
 Create a backend function:
 
-getMilkBill({ fromDate, toDate, dcsCode })
+getMilkBill({ fromDate, toDate, dcsCode, prevFromDate, prevToDate })
 🔹 STEP 1: FETCH BILL HEADER
 
 Use this query:
@@ -105,6 +105,8 @@ INNER JOIN PI_DCS_M D ON D.DCSCODE = T.DCSCODE
 WHERE D.DCSDISPLAYCODE = :dcsCode
 AND T.MILKFROMDATE = :prevFromDate
 AND T.MILKTODATE = :prevToDate
+
+👉 Pass prevFromDate and prevToDate from the form/query parameters so the previous billing period is available when calculating price difference.
 🔹 STEP 7: ADDITIONAL PAYMENTS
 SELECT
 M.SERVICENAME,

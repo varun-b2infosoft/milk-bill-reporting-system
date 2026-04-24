@@ -59,7 +59,7 @@ router.post("/auth/login", async (req, res) => {
       logger.warn("Login attempted but Oracle is not connected and no dev bypass is configured.");
       res.status(503).json({
         error:
-          "Database unavailable. The Oracle DB at 192.168.1.30 is not reachable from this environment. " +
+          "Database unavailable. The Oracle DB at 192.168.1.35 is not reachable from this environment. " +
           "Run the API server on your local network, or set DEV_AUTH_PHONE and DEV_AUTH_PASSWORD environment variables to enable a test bypass.",
       });
       return;

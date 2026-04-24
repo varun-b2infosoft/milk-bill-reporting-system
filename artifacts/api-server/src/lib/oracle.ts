@@ -4,7 +4,7 @@ import { logger } from "./logger";
 const ORACLE_CONFIG = {
   user: "JD2",
   password: "Oracle123",
-  connectString: "192.168.1.30:1521/ORCLPDB1",
+  connectString: "192.168.1.35:1521/ORCLPDB1",
 };
 
 // Known table name patterns for each entity (checked in order)
@@ -122,7 +122,7 @@ export function isConnected(): boolean {
 export async function getConnection(): Promise<any> {
   if (!pool) {
     throw new Error(
-      "Oracle DB is not connected. Ensure the server at 192.168.1.30:1521 is reachable from this environment."
+      "Oracle DB is not connected. Ensure the server at 192.168.1.35:1521 is reachable from this environment."
     );
   }
   return pool.getConnection();
